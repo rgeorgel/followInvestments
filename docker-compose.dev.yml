@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: followinvestments
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "6432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: ./backend/FollowInvestments.Api
+      dockerfile: Dockerfile
+    ports:
+      - "9900:9900"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:9900
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=followinvestments;Username=postgres;Password=postgres
+
+  frontend:
+    build:
+      context: ./frontend/investment-dashboard
+      dockerfile: Dockerfile.dev
+    ports:
+      - "9000:5173"
+    depends_on:
+      - api
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend/investment-dashboard/src:/app/src
+      - ./frontend/investment-dashboard/public:/app/public
+      - ./frontend/investment-dashboard/index.html:/app/index.html
+      - ./frontend/investment-dashboard/vite.config.ts:/app/vite.config.ts
+      - ./frontend/investment-dashboard/tsconfig.json:/app/tsconfig.json
+      - ./frontend/investment-dashboard/tsconfig.node.json:/app/tsconfig.node.json
+    environment:
+      - CHOKIDAR_USEPOLLING=true
