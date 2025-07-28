@@ -161,6 +161,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
             <option value={Category.FIIs}>FIIs</option>
             <option value={Category.ETF}>ETF</option>
             <option value={Category.Bonds}>Bonds</option>
+            <option value={Category.ManagedPortfolio}>Managed Portfolio</option>
           </select>
         </div>
 
