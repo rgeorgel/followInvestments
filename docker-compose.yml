@@ -37,5 +37,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9000:80"
+      - "9001:5173"
     depends_on:
       - api

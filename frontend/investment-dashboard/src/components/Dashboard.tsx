@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { Investment, DashboardData } from '../types/Investment';
+import type { DashboardData } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
-import EditInvestmentForm from './EditInvestmentForm';
+
+interface DashboardProps {
+  onNavigateToAccount?: (account: string) => void;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -38,26 +40,6 @@ const Dashboard: React.FC = () => {
     }).format(value);
   };
 
-  const handleEdit = (investment: Investment) => {
-    setEditingInvestment(investment);
-  };
-
-  const handleDelete = async (investmentId: number) => {
-    if (window.confirm('Are you sure you want to delete this investment?')) {
-      try {
-        await investmentApi.delete(investmentId);
-        await fetchDashboardData(); // Refresh the data
-      } catch (err) {
-        setError('Failed to delete investment');
-        console.error(err);
-      }
-    }
-  };
-
-  const handleEditSuccess = () => {
-    setEditingInvestment(null);
-    fetchDashboardData(); // Refresh the data
-  };
 
   if (loading) return <div>Loading dashboard...</div>;
   if (error) return <div className="error-message">{error}</div>;
@@ -66,107 +48,54 @@ const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <h2>Investment Dashboard</h2>
-      
-      {editingInvestment && (
-        <EditInvestmentForm
-          investment={editingInvestment}
-          onSuccess={handleEditSuccess}
-          onCancel={() => setEditingInvestment(null)}
-        />
-      )}
 
-      {/* All Investments List */}
-      <section className="investments-list">
-        <h3>All Investments</h3>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Account</th>
-                <th>Unit Value</th>
-                <th>Quantity</th>
-                <th>Total</th>
-                <th>Country</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboardData.allInvestments.map((investment: Investment) => (
-                <tr key={investment.id}>
-                  <td>{investment.name}</td>
-                  <td>{new Date(investment.date).toLocaleDateString()}</td>
-                  <td>{investment.description}</td>
-                  <td>{getCategoryLabel(investment.category)}</td>
-                  <td>{investment.account}</td>
-                  <td>{formatCurrency(investment.value, investment.currency)}</td>
-                  <td>{investment.quantity.toFixed(4)}</td>
-                  <td>{formatCurrency(investment.total || (investment.value * investment.quantity), investment.currency)}</td>
-                  <td>{investment.country}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        className="edit-btn" 
-                        onClick={() => handleEdit(investment)}
-                        title="Edit investment"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="delete-btn" 
-                        onClick={() => handleDelete(investment.id)}
-                        title="Delete investment"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {/* Summary per Account */}
+      <section className="account-summary-section">
+        <h3>Summary per Account</h3>
+        <div className="account-summary-grid">
+          {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) && 
+            dashboardData.assetsByAccount.map((accountData: any, index: number) => {
+              const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account === accountData.account);
+              const brlTotal = accountInvestments
+                .filter(inv => inv.currency === 'BRL')
+                .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+              const cadTotal = accountInvestments
+                .filter(inv => inv.currency === 'CAD')
+                .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+              
+              return (
+                <div key={index} className="account-summary-card">
+                  <div className="account-summary-header">
+                    <h4>{accountData.account}</h4>
+                    <span className="investment-count">{accountInvestments.length} investments</span>
+                  </div>
+                  <div className="account-summary-totals">
+                    {brlTotal > 0 && (
+                      <div className="currency-total">
+                        <span className="currency-label">BRL:</span>
+                        <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
+                      </div>
+                    )}
+                    {cadTotal > 0 && (
+                      <div className="currency-total">
+                        <span className="currency-label">CAD:</span>
+                        <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    className="view-account-btn"
+                    onClick={() => onNavigateToAccount?.(accountData.account)}
+                  >
+                    View Details →
+                  </button>
+                </div>
+              );
+            })
+          }
         </div>
       </section>
-
-      {/* Grouped Investments List */}
-      {dashboardData.groupedInvestments && dashboardData.groupedInvestments.length > 0 && (
-        <section className="investments-list">
-          <h3>Grouped Investments (by Category, Account & Name)</h3>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th>Account</th>
-                  <th>Total Quantity</th>
-                  <th>Average Value</th>
-                  <th>Total Value</th>
-                  <th>Currency</th>
-                  <th>Country</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboardData.groupedInvestments.map((group, index) => (
-                  <tr key={index}>
-                    <td>{group.name}</td>
-                    <td>{getCategoryLabel(group.category)}</td>
-                    <td>{group.account}</td>
-                    <td>{group.totalQuantity.toFixed(4)}</td>
-                    <td>{formatCurrency(group.averageValue, group.currency)}</td>
-                    <td>{formatCurrency(group.total, group.currency)}</td>
-                    <td>{group.currency}</td>
-                    <td>{group.country}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
 
       {/* Charts Section */}
       <section className="charts-section">
