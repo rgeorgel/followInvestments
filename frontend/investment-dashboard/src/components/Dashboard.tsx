@@ -15,6 +15,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getProgressColor = (progress: number) => {
+    if (progress >= 100) return '#27ae60'; // Green - Goal reached
+    if (progress >= 75) return '#f39c12';   // Orange - Close to goal
+    if (progress >= 50) return '#3498db';   // Blue - Halfway
+    return '#e74c3c'; // Red - Far from goal
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -49,10 +56,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     <div className="dashboard">
       <h2>Investment Dashboard</h2>
 
-
-      {/* Summary per Account */}
+      {/* Enhanced Summary per Account with Goal Progress */}
       <section className="account-summary-section">
-        <h3>Summary per Account</h3>
+        <h3>Account Summary & Goals Progress</h3>
         <div className="account-summary-grid">
           {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) && 
             dashboardData.assetsByAccount.map((accountData: any, index: number) => {
@@ -68,8 +74,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
               const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
               const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
               
+              // Find corresponding account goals data
+              const accountGoals = dashboardData.accountGoals?.find(
+                (goal: any) => goal.accountName === accountData.account
+              );
+              
               return (
-                <div key={index} className="account-summary-card">
+                <div key={index} className="account-summary-card enhanced">
                   <div className="account-summary-header">
                     <div className="account-name-with-flag">
                       <h4>{accountData.account}</h4>
@@ -77,6 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     </div>
                     <span className="investment-count">{accountInvestments.length} investments</span>
                   </div>
+                  
                   <div className="account-summary-totals">
                     {brlTotal > 0 && (
                       <div className="currency-total">
@@ -91,6 +103,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Compact Goal Progress Bars */}
+                  {accountGoals && (
+                    <div className="compact-goals-progress">
+                      <h5>Financial Goals</h5>
+                      <div className="compact-goals-grid">
+                        {[1, 2, 3, 4, 5].map((year) => {
+                          const goalKey = `year${year}` as keyof typeof accountGoals.goals;
+                          const goalValue = accountGoals.goals[goalKey];
+                          
+                          if (!goalValue) return null;
+                          
+                          const currentValue = accountGoals.currentValue;
+                          const progress = Math.min((currentValue / goalValue) * 100, 100);
+                          const progressColor = getProgressColor(progress);
+                          const displayYear = 2024 + year; // 2025, 2026, 2027, 2028, 2029
+                          
+                          return (
+                            <div key={year} className="compact-goal-item">
+                              <div className="compact-goal-header">
+                                <span className="goal-year-label">{displayYear}</span>
+                                <span className="goal-percentage">{Math.round(progress)}%</span>
+                              </div>
+                              <div className="compact-progress-bar-container">
+                                <div 
+                                  className="compact-progress-bar"
+                                  style={{ 
+                                    width: `${progress}%`, 
+                                    backgroundColor: progressColor 
+                                  }}
+                                />
+                              </div>
+                              <div className="goal-target-value">
+                                {formatCurrency(goalValue, accountGoals.currency)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <button 
                     className="view-account-btn"
                     onClick={() => onNavigateToAccount?.(accountData.account)}

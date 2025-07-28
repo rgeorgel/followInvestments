@@ -88,10 +88,25 @@ export interface AssetByCategory {
   percentage: number;
 }
 
+export interface AccountGoalProgress {
+  accountId: number;
+  accountName: string;
+  currentValue: number;
+  currency: string;
+  goals: {
+    year1?: number;
+    year2?: number;
+    year3?: number;
+    year4?: number;
+    year5?: number;
+  };
+}
+
 export interface DashboardData {
   allInvestments: Investment[];
   groupedInvestments: GroupedInvestment[];
   assetsByAccount: { account: string; total: number }[];
   assetsByCountry: { country: string; total: number }[];
   assetsByCategory: AssetByCategory[];
+  accountGoals: AccountGoalProgress[];
 }

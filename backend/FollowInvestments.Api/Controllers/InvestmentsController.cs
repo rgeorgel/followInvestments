@@ -150,13 +150,41 @@ public class InvestmentsController : ControllerBase
             .OrderByDescending(a => a.Total)
             .ToList();
 
+        // Calculate account goals progress - get all accounts, not just those with investments
+        var allAccounts = await _context.Accounts.ToListAsync();
+        var accountGoals = allAccounts.Select(account => 
+        {
+            var accountInvestments = investments.Where(i => i.AccountId == account.Id).ToList();
+            var currentValue = accountInvestments.Sum(i => i.Total);
+            
+            // Determine currency based on investments, default to CAD if no investments
+            var currency = accountInvestments.FirstOrDefault()?.Currency.ToString() ?? "CAD";
+            
+            return new AccountGoalProgress
+            {
+                AccountId = account.Id,
+                AccountName = account.Name,
+                CurrentValue = currentValue,
+                Currency = currency,
+                Goals = new GoalValues
+                {
+                    Year1 = account.Goal1,
+                    Year2 = account.Goal2,
+                    Year3 = account.Goal3,
+                    Year4 = account.Goal4,
+                    Year5 = account.Goal5
+                }
+            };
+        }).ToList();
+
         return new DashboardData
         {
             AllInvestments = investments,
             GroupedInvestments = groupedInvestments,
             AssetsByAccount = assetsByAccount,
             AssetsByCountry = assetsByCountry,
-            AssetsByCategory = assetsByCategory
+            AssetsByCategory = assetsByCategory,
+            AccountGoals = accountGoals
         };
     }
 
@@ -173,6 +201,7 @@ public class DashboardData
     public object AssetsByAccount { get; set; } = new();
     public object AssetsByCountry { get; set; } = new();
     public List<AssetByCategory> AssetsByCategory { get; set; } = new();
+    public List<AccountGoalProgress> AccountGoals { get; set; } = new();
 }
 
 public class GroupedInvestment
@@ -193,4 +222,22 @@ public class AssetByCategory
     public decimal Total { get; set; }
     public int Count { get; set; }
     public double Percentage { get; set; }
+}
+
+public class AccountGoalProgress
+{
+    public int AccountId { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public decimal CurrentValue { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public GoalValues Goals { get; set; } = new();
+}
+
+public class GoalValues
+{
+    public decimal? Year1 { get; set; }
+    public decimal? Year2 { get; set; }
+    public decimal? Year3 { get; set; }
+    public decimal? Year4 { get; set; }
+    public decimal? Year5 { get; set; }
 }

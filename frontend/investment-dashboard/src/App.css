@@ -240,6 +240,21 @@
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  color: #2c3e50;
+}
+
+.modal-content h2 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.modal-content label {
+  color: #555;
 }
 
 .form-buttons {
@@ -404,6 +419,74 @@
 
 .view-account-btn:hover {
   background-color: #2980b9;
+}
+
+/* Enhanced Account Summary Cards with Compact Goal Progress */
+.account-summary-card.enhanced {
+  padding: 1.5rem;
+}
+
+.compact-goals-progress {
+  margin: 1rem 0;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.compact-goals-progress h5 {
+  color: #34495e;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.compact-goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0.5rem;
+}
+
+.compact-goal-item {
+  text-align: center;
+}
+
+.compact-goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.goal-year-label {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.goal-percentage {
+  font-size: 0.7rem;
+  color: #7f8c8d;
+  font-weight: bold;
+}
+
+.compact-progress-bar-container {
+  background-color: #ecf0f1;
+  border-radius: 8px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.compact-progress-bar {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+
+.goal-target-value {
+  font-size: 0.65rem;
+  color: #7f8c8d;
+  font-weight: normal;
+  line-height: 1.2;
 }
 
 /* Account Investments Page */
@@ -592,5 +675,26 @@
   .edit-btn, .delete-btn {
     padding: 0.3rem 0.6rem;
     font-size: 0.8rem;
+  }
+  
+  .compact-goals-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+  }
+  
+  .compact-goal-item {
+    font-size: 0.8rem;
+  }
+  
+  .goal-year-label {
+    font-size: 0.7rem;
+  }
+  
+  .goal-percentage {
+    font-size: 0.65rem;
+  }
+  
+  .goal-target-value {
+    font-size: 0.6rem;
   }
 }
