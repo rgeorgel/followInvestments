@@ -131,12 +131,26 @@ public class InvestmentsController : ControllerBase
             .Select(g => new { Country = g.Key, Total = g.Sum(i => i.Total) })
             .ToList();
 
+        var assetsByCategory = investments
+            .GroupBy(i => i.Category)
+            .Select(g => new AssetByCategory 
+            { 
+                Category = g.Key.ToString(), 
+                Total = g.Sum(i => i.Total),
+                Count = g.Count(),
+                Percentage = investments.Sum(i => i.Total) > 0 ? 
+                    Math.Round((double)(g.Sum(i => i.Total) / investments.Sum(i => i.Total)) * 100, 2) : 0
+            })
+            .OrderByDescending(a => a.Total)
+            .ToList();
+
         return new DashboardData
         {
             AllInvestments = investments,
             GroupedInvestments = groupedInvestments,
             AssetsByAccount = assetsByAccount,
-            AssetsByCountry = assetsByCountry
+            AssetsByCountry = assetsByCountry,
+            AssetsByCategory = assetsByCategory
         };
     }
 
@@ -152,6 +166,7 @@ public class DashboardData
     public List<GroupedInvestment> GroupedInvestments { get; set; } = new();
     public object AssetsByAccount { get; set; } = new();
     public object AssetsByCountry { get; set; } = new();
+    public List<AssetByCategory> AssetsByCategory { get; set; } = new();
 }
 
 public class GroupedInvestment
@@ -164,4 +179,12 @@ public class GroupedInvestment
     public decimal Total { get; set; }
     public string Currency { get; set; } = string.Empty;
     public string Country { get; set; } = string.Empty;
+}
+
+public class AssetByCategory
+{
+    public string Category { get; set; } = string.Empty;
+    public decimal Total { get; set; }
+    public int Count { get; set; }
+    public double Percentage { get; set; }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { DashboardData } from '../types/Investment';
+import type { DashboardData, AssetByCategory } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
 
@@ -142,6 +142,40 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Asset Allocation Breakdown */}
+          <div className="chart-item">
+            <h3>Asset Allocation Breakdown</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={dashboardData.assetsByCategory}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ category, percentage }: AssetByCategory) => 
+                    `${getCategoryLabel(category)}: ${percentage}%`
+                  }
+                  outerRadius={80}
+                  fill="#82ca9d"
+                  dataKey="total"
+                >
+                  {dashboardData.assetsByCategory.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value, name, props: any) => [
+                    `$${value} (${props.payload.percentage}%)`,
+                    `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
+                  ]} 
+                />
+                <Legend 
+                  formatter={(value, entry: any) => getCategoryLabel(entry.payload.category)}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

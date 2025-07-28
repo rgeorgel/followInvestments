@@ -70,9 +70,17 @@ export interface GroupedInvestment {
   country: string;
 }
 
+export interface AssetByCategory {
+  category: string;
+  total: number;
+  count: number;
+  percentage: number;
+}
+
 export interface DashboardData {
   allInvestments: Investment[];
   groupedInvestments: GroupedInvestment[];
   assetsByAccount: { account: string; total: number }[];
   assetsByCountry: { country: string; total: number }[];
+  assetsByCategory: AssetByCategory[];
 }
