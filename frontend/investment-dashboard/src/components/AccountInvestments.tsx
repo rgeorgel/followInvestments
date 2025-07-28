@@ -24,7 +24,7 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
       setLoading(true);
       const allInvestments = await investmentApi.getAll();
       // Filter investments by account
-      const accountInvestments = allInvestments.filter(inv => inv.account === account);
+      const accountInvestments = allInvestments.filter(inv => inv.account.name === account);
       setInvestments(accountInvestments);
     } catch (err) {
       setError('Failed to fetch investments');
@@ -63,7 +63,6 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
     fetchInvestments(); // Refresh the data
   };
 
-  const totalValue = investments.reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
   const totalBRL = investments.filter(inv => inv.currency === 'BRL').reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
   const totalCAD = investments.filter(inv => inv.currency === 'CAD').reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
 

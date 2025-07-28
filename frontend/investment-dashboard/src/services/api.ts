@@ -38,7 +38,7 @@ export const investmentApi = {
       date: date,
       description: investment.description,
       category: investment.category, // Keep as string
-      account: investment.account
+      accountId: investment.accountId
     };
 
     const response = await api.post<Investment>('/investments', payload);

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FollowInvestments.Api.Migrations
 {
     [DbContext(typeof(InvestmentContext))]
-    [Migration("20250727223308_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250728225518_BaselineFromExisting")]
+    partial class BaselineFromExisting
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -47,12 +47,20 @@ namespace FollowInvestments.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(18,2)");

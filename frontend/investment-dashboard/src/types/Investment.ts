@@ -7,7 +7,16 @@ export interface Investment {
   date: string;
   description: string;
   category: string;
-  account: string;
+  accountId: number;
+  account: {
+    id: number;
+    name: string;
+    goal1?: number;
+    goal2?: number;
+    goal3?: number;
+    goal4?: number;
+    goal5?: number;
+  };
   country: string;
   total: number;
 }
@@ -58,7 +67,7 @@ export interface CreateInvestmentRequest {
   date: string;
   description: string;
   category: string;
-  account: string;
+  accountId: number;
 }
 
 export interface GroupedInvestment {

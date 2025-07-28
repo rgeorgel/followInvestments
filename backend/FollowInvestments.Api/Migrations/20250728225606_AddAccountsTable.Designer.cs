@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FollowInvestments.Api.Migrations
 {
     [DbContext(typeof(InvestmentContext))]
-    [Migration("20250727230247_UpdateDateTimeColumn")]
-    partial class UpdateDateTimeColumn
+    [Migration("20250728225606_AddAccountsTable")]
+    partial class AddAccountsTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,39 @@ namespace FollowInvestments.Api.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("FollowInvestments.Api.Models.Account", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("Goal1")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Goal2")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Goal3")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Goal4")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Goal5")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Accounts");
+                });
 
             modelBuilder.Entity("FollowInvestments.Api.Models.Investment", b =>
                 {
@@ -37,6 +70,9 @@ namespace FollowInvestments.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("AccountId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -54,12 +90,34 @@ namespace FollowInvestments.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountId");
+
                     b.ToTable("Investments");
+                });
+
+            modelBuilder.Entity("FollowInvestments.Api.Models.Investment", b =>
+                {
+                    b.HasOne("FollowInvestments.Api.Models.Account", null)
+                        .WithMany("Investments")
+                        .HasForeignKey("AccountId");
+                });
+
+            modelBuilder.Entity("FollowInvestments.Api.Models.Account", b =>
+                {
+                    b.Navigation("Investments");
                 });
 #pragma warning restore 612, 618
         }

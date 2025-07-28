@@ -10,6 +10,7 @@ public class InvestmentContext : DbContext
     }
 
     public DbSet<Investment> Investments { get; set; }
+    public DbSet<Account> Accounts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,32 @@ public class InvestmentContext : DbContext
                 
             entity.Property(e => e.Date)
                 .HasColumnType("timestamp without time zone");
+
+            // Configure relationship with Account
+            entity.HasOne(e => e.Account)
+                .WithMany(a => a.Investments)
+                .HasForeignKey(e => e.AccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Account>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+                
+            entity.Property(e => e.Goal1)
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Goal2)
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Goal3)
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Goal4)
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Goal5)
+                .HasColumnType("decimal(18,2)");
         });
     }
 }

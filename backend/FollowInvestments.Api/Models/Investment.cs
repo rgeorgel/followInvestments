@@ -35,8 +35,10 @@ public class Investment
     public Category Category { get; set; }
 
     [Required]
-    [MaxLength(100)]
-    public string Account { get; set; } = string.Empty;
+    public int AccountId { get; set; }
+
+    // Navigation property
+    public Account Account { get; set; } = null!;
 
     public string Country => Currency == Currency.BRL ? "Brazil" : "Canada";
     
@@ -85,6 +87,5 @@ public class CreateInvestmentRequest
     public Category Category { get; set; }
 
     [Required]
-    [MaxLength(100)]
-    public string Account { get; set; } = string.Empty;
+    public int AccountId { get; set; }
 }

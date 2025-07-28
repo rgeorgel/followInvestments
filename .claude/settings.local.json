@@ -13,7 +13,11 @@
       "Bash(docker-compose up:*)",
       "Bash(docker-compose:*)",
       "Bash(curl:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(dotnet build)",
+      "Bash(dotnet ef database:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

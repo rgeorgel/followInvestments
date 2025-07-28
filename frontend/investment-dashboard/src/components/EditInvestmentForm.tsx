@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Investment } from '../types/Investment';
+import type { Account } from '../types/Account';
 import { Currency as CurrencyEnum, Category as CategoryEnum } from '../types/Investment';
 import { investmentApi } from '../services/api';
+import { accountApi } from '../services/accountApi';
 
 interface EditInvestmentFormProps {
   investment: Investment;
@@ -41,12 +43,26 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
     date: investment.date.split('T')[0],
     description: investment.description,
     category: getCategoryString(investment.category),
-    account: investment.account
+    accountId: investment.accountId
   });
   
   console.log('EditForm initialized with:', formData);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const accountData = await accountApi.getAll();
+      setAccounts(accountData);
+    } catch (err) {
+      console.error('Failed to fetch accounts:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +82,7 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
         date: formData.date,
         description: formData.description,
         category: formData.category,
-        account: formData.account
+        accountId: formData.accountId
       };
       console.log('EditForm final investment object:', updatedInvestment);
       await investmentApi.update(investment.id, updatedInvestment);
@@ -85,6 +101,8 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
     
     if (name === 'value' || name === 'quantity') {
       processedValue = parseFloat(value) || 0;
+    } else if (name === 'accountId') {
+      processedValue = parseInt(value) || 0;
     }
     // Keep currency and category as strings - no conversion needed
     
@@ -201,16 +219,26 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
           </div>
 
           <div className="form-group">
-            <label htmlFor="account">Account:</label>
-            <input
-              type="text"
-              id="account"
-              name="account"
-              value={formData.account}
+            <label htmlFor="accountId">Account:</label>
+            <select
+              id="accountId"
+              name="accountId"
+              value={formData.accountId}
               onChange={handleInputChange}
-              maxLength={100}
               required
-            />
+            >
+              <option value={0} disabled>Select an account</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+            {accounts.length === 0 && (
+              <p className="form-help-text">
+                No accounts available. Please create an account first.
+              </p>
+            )}
           </div>
 
           <div className="form-buttons">

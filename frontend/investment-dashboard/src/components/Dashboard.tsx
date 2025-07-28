@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { DashboardData, AssetByCategory } from '../types/Investment';
+import type { DashboardData } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
 
@@ -56,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
         <div className="account-summary-grid">
           {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) && 
             dashboardData.assetsByAccount.map((accountData: any, index: number) => {
-              const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account === accountData.account);
+              const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account.name === accountData.account);
               const brlTotal = accountInvestments
                 .filter(inv => inv.currency === 'BRL')
                 .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
@@ -156,8 +156,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, percentage }: AssetByCategory) => 
-                    `${getCategoryLabel(category)}: ${percentage}%`
+                  label={(entry: any) => 
+                    `${getCategoryLabel(entry.category)}: ${entry.percentage}%`
                   }
                   outerRadius={80}
                   fill="#82ca9d"
@@ -168,13 +168,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value, name, props: any) => [
+                  formatter={(value, _name, props: any) => [
                     `$${value} (${props.payload.percentage}%)`,
                     `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
                   ]} 
                 />
                 <Legend 
-                  formatter={(value, entry: any) => getCategoryLabel(entry.payload.category)}
+                  formatter={(_value, entry: any) => getCategoryLabel(entry.payload.category)}
                 />
               </PieChart>
             </ResponsiveContainer>

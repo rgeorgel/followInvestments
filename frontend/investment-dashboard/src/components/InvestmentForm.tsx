@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CreateInvestmentRequest } from '../types/Investment';
+import type { Account } from '../types/Account';
 import { Currency, Category } from '../types/Investment';
 import { investmentApi } from '../services/api';
+import { accountApi } from '../services/accountApi';
 
 interface InvestmentFormProps {
   onSuccess: () => void;
@@ -16,10 +18,27 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
     date: new Date().toISOString().split('T')[0],
     description: '',
     category: Category.Stocks,
-    account: ''
+    accountId: 0
   });
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const accountData = await accountApi.getAll();
+      setAccounts(accountData);
+      if (accountData.length > 0) {
+        setFormData(prev => ({ ...prev, accountId: accountData[0].id }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch accounts:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +55,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
         date: new Date().toISOString().split('T')[0],
         description: '',
         category: Category.Stocks,
-        account: ''
+        accountId: accounts.length > 0 ? accounts[0].id : 0
       });
       onSuccess();
     } catch (err) {
@@ -53,8 +72,10 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
     
     if (name === 'value' || name === 'quantity') {
       processedValue = parseFloat(value) || 0;
+    } else if (name === 'accountId') {
+      processedValue = parseInt(value) || 0;
     }
-    // Remove number conversion for currency and category - keep as strings
+    // Keep currency and category as strings
     
     setFormData(prev => ({
       ...prev,
@@ -166,16 +187,26 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="account">Account:</label>
-          <input
-            type="text"
-            id="account"
-            name="account"
-            value={formData.account}
+          <label htmlFor="accountId">Account:</label>
+          <select
+            id="accountId"
+            name="accountId"
+            value={formData.accountId}
             onChange={handleInputChange}
-            maxLength={100}
             required
-          />
+          >
+            <option value={0} disabled>Select an account</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </select>
+          {accounts.length === 0 && (
+            <p className="form-help-text">
+              No accounts available. Please create an account first.
+            </p>
+          )}
         </div>
 
         <button type="submit" disabled={loading}>

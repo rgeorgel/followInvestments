@@ -3,8 +3,9 @@ import './App.css'
 import Dashboard from './components/Dashboard'
 import InvestmentForm from './components/InvestmentForm'
 import AccountInvestments from './components/AccountInvestments'
+import AccountList from './components/AccountList'
 
-type AppView = 'dashboard' | 'form' | 'account'
+type AppView = 'dashboard' | 'form' | 'account' | 'accounts'
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>('dashboard')
@@ -39,6 +40,12 @@ function App() {
               Dashboard
             </button>
             <button 
+              className={activeView === 'accounts' ? 'active' : ''}
+              onClick={() => setActiveView('accounts')}
+            >
+              Accounts
+            </button>
+            <button 
               className={activeView === 'form' ? 'active' : ''}
               onClick={() => setActiveView('form')}
             >
@@ -54,6 +61,9 @@ function App() {
             key={refreshDashboard} 
             onNavigateToAccount={handleNavigateToAccount}
           />
+        )}
+        {activeView === 'accounts' && (
+          <AccountList />
         )}
         {activeView === 'form' && (
           <InvestmentForm onSuccess={handleInvestmentCreated} />

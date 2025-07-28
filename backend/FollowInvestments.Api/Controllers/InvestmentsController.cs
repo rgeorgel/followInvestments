@@ -19,13 +19,17 @@ public class InvestmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Investment>>> GetInvestments()
     {
-        return await _context.Investments.ToListAsync();
+        return await _context.Investments
+            .Include(i => i.Account)
+            .ToListAsync();
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Investment>> GetInvestment(int id)
     {
-        var investment = await _context.Investments.FindAsync(id);
+        var investment = await _context.Investments
+            .Include(i => i.Account)
+            .FirstOrDefaultAsync(i => i.Id == id);
 
         if (investment == null)
         {
@@ -47,7 +51,7 @@ public class InvestmentsController : ControllerBase
             Date = investment.Date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(investment.Date, DateTimeKind.Utc) : investment.Date,
             Description = investment.Description,
             Category = investment.Category,
-            Account = investment.Account
+            AccountId = investment.AccountId
         };
 
         _context.Investments.Add(newInvestment);
@@ -103,16 +107,18 @@ public class InvestmentsController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<ActionResult<DashboardData>> GetDashboardData()
     {
-        var investments = await _context.Investments.ToListAsync();
+        var investments = await _context.Investments
+            .Include(i => i.Account)
+            .ToListAsync();
         
         // Group by category, account, and name - sum total (quantity * value)
         var groupedInvestments = investments
-            .GroupBy(i => new { i.Category, i.Account, i.Name })
+            .GroupBy(i => new { i.Category, AccountName = i.Account.Name, InvestmentName = i.Name })
             .Select(g => new GroupedInvestment
             {
                 Category = g.Key.Category.ToString(),
-                Account = g.Key.Account,
-                Name = g.Key.Name,
+                Account = g.Key.AccountName,
+                Name = g.Key.InvestmentName,
                 TotalQuantity = g.Sum(i => i.Quantity),
                 AverageValue = g.Average(i => i.Value),
                 Total = g.Sum(i => i.Total),
