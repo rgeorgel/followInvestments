@@ -2,6 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .app-header {
@@ -11,16 +12,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .app-header h1 {
   margin: 0;
   font-size: 1.8rem;
+  flex-shrink: 0;
 }
 
 .app-header nav {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .app-header nav button {
@@ -31,6 +36,7 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .app-header nav button:hover,
@@ -42,9 +48,9 @@
 .app-main {
   flex: 1;
   padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 /* Investment Form Styles */
@@ -167,8 +173,15 @@
 
 .charts-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: 1fr;
   gap: 2rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .charts-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .chart-item {
@@ -311,9 +324,9 @@
 
 .account-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.5rem;
-  max-width: none;
+  width: 100%;
 }
 
 /* Responsive breakpoints for better card layout */
@@ -323,9 +336,15 @@
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
   .account-summary-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1400px) {
+  .account-summary-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -637,18 +656,50 @@
   margin: 0;
 }
 
+/* Mobile and Tablet Responsive Styles */
 @media (max-width: 768px) {
   .app-header {
     flex-direction: column;
     gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .app-header h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+  
+  .app-header nav {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .app-header nav button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
   }
   
   .charts-container {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .chart-item {
+    padding: 1rem;
   }
   
   .app-main {
     padding: 1rem;
+  }
+  
+  .dashboard h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .account-summary-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
   }
   
   .account-list-header {
@@ -659,12 +710,13 @@
   
   .accounts-table {
     overflow-x: auto;
+    font-size: 0.85rem;
   }
   
   .accounts-table th,
   .accounts-table td {
     padding: 0.75rem 0.5rem;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   
   .accounts-table .account-actions {
@@ -696,5 +748,36 @@
   
   .goal-target-value {
     font-size: 0.6rem;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .investment-form {
+    margin: 0;
+    padding: 1.5rem;
+  }
+  
+  .modal-content {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-height: 85vh;
+  }
+}
+
+/* Large tablet styles */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .app-header {
+    padding: 1rem 1.5rem;
+  }
+  
+  .app-main {
+    padding: 1.5rem;
+  }
+  
+  .compact-goals-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
