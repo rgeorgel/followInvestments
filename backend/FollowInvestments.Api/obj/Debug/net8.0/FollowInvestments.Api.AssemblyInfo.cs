@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FollowInvestments.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+309711d72f37d3be4fb23686f3986c0797761cb5")]
 [assembly: System.Reflection.AssemblyProductAttribute("FollowInvestments.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FollowInvestments.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

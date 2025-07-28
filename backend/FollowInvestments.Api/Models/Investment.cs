@@ -53,7 +53,9 @@ public enum Category
 {
     RendaFixa,
     Stocks,
-    FIIs
+    FIIs,
+    ETF,
+    Bonds
 }
 
 public class CreateInvestmentRequest

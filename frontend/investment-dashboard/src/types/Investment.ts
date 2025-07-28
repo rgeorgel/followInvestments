@@ -20,7 +20,9 @@ export const Currency = {
 export const Category = {
   RendaFixa: 'RendaFixa',
   Stocks: 'Stocks',
-  FIIs: 'FIIs'
+  FIIs: 'FIIs',
+  ETF: 'ETF',
+  Bonds: 'Bonds'
 } as const;
 
 export type Currency = typeof Currency[keyof typeof Currency];
@@ -40,6 +42,8 @@ export const getCategoryLabel = (category: string): string => {
     case 'RendaFixa': return 'Renda Fixa';
     case 'Stocks': return 'Stocks';
     case 'FIIs': return 'FIIs';
+    case 'ETF': return 'ETF';
+    case 'Bonds': return 'Bonds';
     default: return 'Unknown';
   }
 };

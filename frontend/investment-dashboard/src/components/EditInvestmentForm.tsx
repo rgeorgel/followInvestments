@@ -27,6 +27,8 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
     if (category === 0) return 'RendaFixa';
     if (category === 1) return 'Stocks';
     if (category === 2) return 'FIIs';
+    if (category === 3) return 'ETF';
+    if (category === 4) return 'Bonds';
     return 'Stocks'; // default
   };
   
@@ -191,6 +193,8 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
               <option value={CategoryEnum.RendaFixa}>Renda Fixa</option>
               <option value={CategoryEnum.Stocks}>Stocks</option>
               <option value={CategoryEnum.FIIs}>FIIs</option>
+              <option value={CategoryEnum.ETF}>ETF</option>
+              <option value={CategoryEnum.Bonds}>Bonds</option>
             </select>
           </div>
 
