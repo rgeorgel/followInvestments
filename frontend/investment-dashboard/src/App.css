@@ -331,10 +331,36 @@
   border-bottom: 1px solid #f0f0f0;
 }
 
+.account-name-with-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .account-summary-header h4 {
   color: #2c3e50;
   margin: 0;
   font-size: 1.2rem;
+}
+
+.country-code {
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.country-code.brazil {
+  background-color: #28a745;
+  color: white;
+}
+
+.country-code.canada {
+  background-color: #dc3545;
+  color: white;
 }
 
 .investment-count {

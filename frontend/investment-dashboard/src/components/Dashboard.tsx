@@ -64,10 +64,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                 .filter(inv => inv.currency === 'CAD')
                 .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
               
+              // Determine primary country based on which currency has higher total
+              const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
+              const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
+              
               return (
                 <div key={index} className="account-summary-card">
                   <div className="account-summary-header">
-                    <h4>{accountData.account}</h4>
+                    <div className="account-name-with-flag">
+                      <h4>{accountData.account}</h4>
+                      <span className={`country-code ${primaryCountry.toLowerCase()}`}>{countryCode}</span>
+                    </div>
                     <span className="investment-count">{accountInvestments.length} investments</span>
                   </div>
                   <div className="account-summary-totals">
