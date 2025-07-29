@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using FollowInvestments.Api.Data;
+using FollowInvestments.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,9 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add HttpClient and Yahoo Finance service
+builder.Services.AddHttpClient<IYahooFinanceService, YahooFinanceService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
