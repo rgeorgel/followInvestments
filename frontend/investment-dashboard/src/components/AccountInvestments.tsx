@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import type { Investment } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
@@ -66,6 +67,33 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
   const totalBRL = investments.filter(inv => inv.currency === 'BRL').reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
   const totalCAD = investments.filter(inv => inv.currency === 'CAD').reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
 
+  // Group investments by name for the breakdown chart
+  const investmentBreakdown = investments.reduce((acc, investment) => {
+    const total = investment.total || (investment.value * investment.quantity);
+    const existingItem = acc.find(item => item.name === investment.name);
+    
+    if (existingItem) {
+      existingItem.value += total;
+      existingItem.quantity += investment.quantity;
+    } else {
+      acc.push({
+        name: investment.name,
+        value: total,
+        quantity: investment.quantity,
+        category: getCategoryLabel(investment.category),
+        currency: investment.currency
+      });
+    }
+    
+    return acc;
+  }, [] as Array<{name: string; value: number; quantity: number; category: string; currency: string}>);
+
+  // Sort by value descending
+  investmentBreakdown.sort((a, b) => b.value - a.value);
+
+  // Colors for the pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#d084d0', '#ffb347'];
+
   if (loading) return <div>Loading investments...</div>;
   if (error) return <div className="error-message">{error}</div>;
 
@@ -93,6 +121,74 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
           )}
         </div>
       </div>
+
+      {/* Investment Breakdown Chart */}
+      {investmentBreakdown.length > 0 && (
+        <section className="investment-breakdown-section">
+          <h3>Investment Breakdown</h3>
+          <div className="breakdown-content">
+            <div className="breakdown-chart">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={investmentBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => {
+                      const total = totalBRL + totalCAD;
+                      if (!value || total === 0) return '';
+                      const percentage = ((value / total) * 100).toFixed(1);
+                      return `${name}: ${percentage}%`;
+                    }}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {investmentBreakdown.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number, _name, props) => [
+                      formatCurrency(value, props.payload.currency),
+                      `${props.payload.name} (${props.payload.category})`
+                    ]}
+                  />
+                  <Legend 
+                    formatter={(_value, entry: any) => (
+                      <span style={{ color: entry.color }}>
+                        {entry.payload.name} - {formatCurrency(entry.payload.value, entry.payload.currency)}
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="breakdown-summary">
+              <h4>Investment Summary</h4>
+              <div className="breakdown-list">
+                {investmentBreakdown.map((item, index) => {
+                  const percentage = ((item.value / (totalBRL + totalCAD)) * 100).toFixed(1);
+                  return (
+                    <div key={item.name} className="breakdown-item">
+                      <div className="breakdown-item-header">
+                        <div className="breakdown-color" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                        <span className="breakdown-name">{item.name}</span>
+                        <span className="breakdown-percentage">{percentage}%</span>
+                      </div>
+                      <div className="breakdown-details">
+                        <span className="breakdown-category">{item.category}</span>
+                        <span className="breakdown-value">{formatCurrency(item.value, item.currency)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {editingInvestment && (
         <EditInvestmentForm
