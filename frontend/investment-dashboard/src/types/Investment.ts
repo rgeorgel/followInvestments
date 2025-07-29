@@ -88,6 +88,33 @@ export interface AssetByCategory {
   percentage: number;
 }
 
+export interface InvestmentPerformance {
+  investmentId: number;
+  name: string;
+  symbol: string;
+  category: string;
+  currency: string;
+  quantity: number;
+  purchasePrice: number;
+  currentPrice?: number;
+  totalInvested: number;
+  currentValue: number;
+  gainLoss: number;
+  gainLossPercentage: number;
+  lastUpdated: string;
+  hasCurrentPrice: boolean;
+}
+
+export interface AccountPerformance {
+  accountId: number;
+  accountName: string;
+  investments: InvestmentPerformance[];
+  totalInvested: number;
+  currentValue: number;
+  totalGainLoss: number;
+  totalGainLossPercentage: number;
+}
+
 export interface AccountGoalProgress {
   accountId: number;
   accountName: string;
@@ -100,6 +127,7 @@ export interface AccountGoalProgress {
     year4?: number;
     year5?: number;
   };
+  performance?: AccountPerformance;
 }
 
 export interface DashboardData {

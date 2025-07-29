@@ -424,6 +424,109 @@
   font-size: 1.1rem;
 }
 
+.performance-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.performance-amount {
+  font-weight: bold;
+}
+
+.performance-percentage {
+  font-weight: normal;
+  font-style: italic;
+}
+
+.performance-amount.positive,
+.performance-percentage.positive {
+  color: #27ae60; /* Green for gains */
+}
+
+.performance-amount.negative,
+.performance-percentage.negative {
+  color: #e74c3c; /* Red for losses */
+}
+
+.account-performance-summary {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.performance-label {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.performance-values {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.performance-values .performance-amount {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.performance-values .performance-percentage {
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Account Details Performance Styling */
+.performance-summary {
+  border-left: 3px solid #3498db;
+  padding-left: 0.5rem;
+  background-color: #f8f9fa;
+}
+
+.performance-value.positive {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.performance-value.negative {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.performance-percentage {
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.investment-performance {
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.investment-performance .performance-amount {
+  font-weight: bold;
+  display: block;
+}
+
+.investment-performance .performance-percentage {
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.no-price, .no-performance {
+  color: #7f8c8d;
+  font-style: italic;
+  text-align: center;
+}
+
 .view-account-btn {
   width: 100%;
   background-color: #3498db;

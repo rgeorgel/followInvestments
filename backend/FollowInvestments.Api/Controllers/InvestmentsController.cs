@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FollowInvestments.Api.Data;
 using FollowInvestments.Api.Models;
+using FollowInvestments.Api.Services;
 
 namespace FollowInvestments.Api.Controllers;
 
@@ -10,10 +11,12 @@ namespace FollowInvestments.Api.Controllers;
 public class InvestmentsController : ControllerBase
 {
     private readonly InvestmentContext _context;
+    private readonly IInvestmentPerformanceService _performanceService;
 
-    public InvestmentsController(InvestmentContext context)
+    public InvestmentsController(InvestmentContext context, IInvestmentPerformanceService performanceService)
     {
         _context = context;
+        _performanceService = performanceService;
     }
 
     [HttpGet]
@@ -162,11 +165,17 @@ public class InvestmentsController : ControllerBase
             .OrderByDescending(a => a.Total)
             .ToList();
 
+        // Calculate account performance including gains/losses
+        var accountPerformances = await _performanceService.CalculateAllAccountsPerformanceAsync();
+        
         // Calculate account goals progress - get all accounts, not just those with investments
         var accountGoals = allAccounts.Select(account => 
         {
             var accountInvestments = investments.Where(i => i.AccountId == account.Id).ToList();
-            var currentValue = accountInvestments.Sum(i => i.Total);
+            var performance = accountPerformances.FirstOrDefault(ap => ap.AccountId == account.Id);
+            
+            // Use current value from performance if available, otherwise use book value
+            var currentValue = performance?.CurrentValue ?? accountInvestments.Sum(i => i.Total);
             
             // Determine currency based on investments, default to CAD if no investments
             var currency = accountInvestments.FirstOrDefault()?.Currency.ToString() ?? "CAD";
@@ -184,7 +193,8 @@ public class InvestmentsController : ControllerBase
                     Year3 = account.Goal3,
                     Year4 = account.Goal4,
                     Year5 = account.Goal5
-                }
+                },
+                Performance = performance
             };
         }).ToList();
 
@@ -197,6 +207,38 @@ public class InvestmentsController : ControllerBase
             AssetsByCategory = assetsByCategory,
             AccountGoals = accountGoals
         };
+    }
+
+    [HttpGet("account/{accountId}/performance")]
+    public async Task<ActionResult<AccountPerformance>> GetAccountPerformance(int accountId)
+    {
+        try
+        {
+            var performance = await _performanceService.CalculateAccountPerformanceAsync(accountId);
+            return Ok(performance);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An error occurred while calculating account performance");
+        }
+    }
+
+    [HttpGet("performance")]
+    public async Task<ActionResult<List<AccountPerformance>>> GetAllAccountsPerformance()
+    {
+        try
+        {
+            var performances = await _performanceService.CalculateAllAccountsPerformanceAsync();
+            return Ok(performances);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An error occurred while calculating account performances");
+        }
     }
 
     private bool InvestmentExists(int id)
@@ -242,6 +284,7 @@ public class AccountGoalProgress
     public decimal CurrentValue { get; set; }
     public string Currency { get; set; } = string.Empty;
     public GoalValues Goals { get; set; } = new();
+    public AccountPerformance? Performance { get; set; }
 }
 
 public class GoalValues

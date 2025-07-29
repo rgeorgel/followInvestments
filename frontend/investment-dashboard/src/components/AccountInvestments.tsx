@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import type { Investment } from '../types/Investment';
+import type { Investment, AccountPerformance } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
 import EditInvestmentForm from './EditInvestmentForm';
@@ -12,6 +12,7 @@ interface AccountInvestmentsProps {
 
 const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack }) => {
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [accountPerformance, setAccountPerformance] = useState<AccountPerformance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -27,11 +28,29 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
       // Filter investments by account
       const accountInvestments = allInvestments.filter(inv => inv.account.name === account);
       setInvestments(accountInvestments);
+
+      // Fetch account performance data
+      if (accountInvestments.length > 0) {
+        await fetchAccountPerformance(accountInvestments[0].accountId);
+      }
     } catch (err) {
       setError('Failed to fetch investments');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAccountPerformance = async (accountId: number) => {
+    try {
+      const response = await fetch(`http://localhost:9900/api/investments/account/${accountId}/performance`);
+      if (response.ok) {
+        const performance = await response.json();
+        setAccountPerformance(performance);
+      }
+    } catch (err) {
+      console.error('Failed to fetch account performance:', err);
+      // Don't set error state since performance is optional
     }
   };
 
@@ -41,6 +60,17 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
       style: 'currency',
       currency: currencyCode,
     }).format(value);
+  };
+
+  const formatPerformance = (gainLoss: number, percentage: number, currency: string) => {
+    const formattedAmount = formatCurrency(Math.abs(gainLoss), currency);
+    const formattedPercentage = percentage.toFixed(2);
+    const sign = gainLoss >= 0 ? '+' : '';
+    return {
+      amount: `${sign}${formattedAmount}`,
+      percentage: `${sign}${formattedPercentage}%`,
+      isPositive: gainLoss >= 0
+    };
   };
 
   const handleEdit = (investment: Investment) => {
@@ -71,7 +101,7 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
   const investmentBreakdown = investments.reduce((acc, investment) => {
     const total = investment.total || (investment.value * investment.quantity);
     const existingItem = acc.find(item => item.name === investment.name);
-    
+
     if (existingItem) {
       existingItem.value += total;
       existingItem.quantity += investment.quantity;
@@ -84,7 +114,7 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
         currency: investment.currency
       });
     }
-    
+
     return acc;
   }, [] as Array<{name: string; value: number; quantity: number; category: string; currency: string}>);
 
@@ -119,6 +149,27 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
               <span className="value">{formatCurrency(totalCAD, 'CAD')}</span>
             </div>
           )}
+          {accountPerformance && (
+            <>
+              <div className="summary-item performance-summary">
+                <span className="label">Current Value:</span>
+                <span className="value">{formatCurrency(accountPerformance.currentValue, accountPerformance.investments[0]?.currency || 'CAD')}</span>
+              </div>
+              <div className="summary-item performance-summary">
+                <span className="label">Total Invested:</span>
+                <span className="value">{formatCurrency(accountPerformance.totalInvested, accountPerformance.investments[0]?.currency || 'CAD')}</span>
+              </div>
+              <div className="summary-item performance-summary">
+                <span className="label">Performance:</span>
+                <span className={`value performance-value ${accountPerformance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                  {formatPerformance(accountPerformance.totalGainLoss, accountPerformance.totalGainLossPercentage, accountPerformance.investments[0]?.currency || 'CAD').amount}
+                  <span className="performance-percentage">
+                    {' '}({formatPerformance(accountPerformance.totalGainLoss, accountPerformance.totalGainLossPercentage, accountPerformance.investments[0]?.currency || 'CAD').percentage})
+                  </span>
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -149,13 +200,13 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number, _name, props) => [
                       formatCurrency(value, props.payload.currency),
                       `${props.payload.name} (${props.payload.category})`
                     ]}
                   />
-                  <Legend 
+                  <Legend
                     formatter={(_value, entry: any) => (
                       <span style={{ color: entry.color }}>
                         {entry.payload.name} - {formatCurrency(entry.payload.value, entry.payload.currency)}
@@ -205,46 +256,76 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
               <tr>
                 <th>Name</th>
                 <th>Date</th>
-                <th>Description</th>
                 <th>Category</th>
-                <th>Unit Value</th>
+                <th>Purchase Price</th>
+                <th>Current Price</th>
                 <th>Quantity</th>
-                <th>Total</th>
-                <th>Country</th>
+                <th>Current Value</th>
+                <th>Gain/Loss</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {investments.map((investment: Investment) => (
-                <tr key={investment.id}>
-                  <td>{investment.name}</td>
-                  <td>{new Date(investment.date).toLocaleDateString()}</td>
-                  <td>{investment.description}</td>
-                  <td>{getCategoryLabel(investment.category)}</td>
-                  <td>{formatCurrency(investment.value, investment.currency)}</td>
-                  <td>{investment.quantity.toFixed(4)}</td>
-                  <td>{formatCurrency(investment.total || (investment.value * investment.quantity), investment.currency)}</td>
-                  <td>{investment.country}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        className="edit-btn" 
-                        onClick={() => handleEdit(investment)}
-                        title="Edit investment"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="delete-btn" 
-                        onClick={() => handleDelete(investment.id)}
-                        title="Delete investment"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {investments.map((investment: Investment) => {
+                const investmentPerformance = accountPerformance?.investments.find(
+                  ip => ip.investmentId === investment.id
+                );
+
+                return (
+                  <tr key={investment.id}>
+                    <td>{investment.name}</td>
+                    <td>{new Date(investment.date).toLocaleDateString()}</td>
+                    <td>{getCategoryLabel(investment.category)}</td>
+                    <td>{formatCurrency(investment.value, investment.currency)}</td>
+                    <td>
+                      {investmentPerformance?.currentPrice ?
+                        formatCurrency(investmentPerformance.currentPrice, investment.currency) :
+                        <span className="no-price">N/A</span>
+                      }
+                    </td>
+                    <td>{Math.round(investment.quantity)}</td>
+                    <td>
+                      {investmentPerformance ?
+                        formatCurrency(investmentPerformance.currentValue, investment.currency) :
+                        formatCurrency(investment.total || (investment.value * investment.quantity), investment.currency)
+                      }
+                    </td>
+                    <td>
+                      {investmentPerformance && investmentPerformance.gainLoss !== 0 ? (
+                        <div className="investment-performance">
+                          <span className={`performance-amount ${investmentPerformance.gainLoss >= 0 ? 'positive' : 'negative'}`}>
+                            {formatPerformance(investmentPerformance.gainLoss, investmentPerformance.gainLossPercentage, investment.currency).amount}
+                          </span>
+                          <br />
+                          <span className={`performance-percentage ${investmentPerformance.gainLoss >= 0 ? 'positive' : 'negative'}`}>
+                            ({formatPerformance(investmentPerformance.gainLoss, investmentPerformance.gainLossPercentage, investment.currency).percentage})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="no-performance">-</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="edit-btn"
+                          onClick={() => handleEdit(investment)}
+                          title="Edit investment"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(investment.id)}
+                          title="Delete investment"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

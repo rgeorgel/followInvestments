@@ -22,6 +22,9 @@ builder.Services.AddSwaggerGen();
 // Add HttpClient and Yahoo Finance service
 builder.Services.AddHttpClient<IYahooFinanceService, YahooFinanceService>();
 
+// Add Investment Performance service
+builder.Services.AddScoped<IInvestmentPerformanceService, InvestmentPerformanceService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {

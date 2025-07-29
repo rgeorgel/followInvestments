@@ -47,6 +47,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     }).format(value);
   };
 
+  const formatPerformance = (gainLoss: number, percentage: number, currency: string) => {
+    const formattedAmount = formatCurrency(Math.abs(gainLoss), currency);
+    const formattedPercentage = percentage.toFixed(2);
+    const sign = gainLoss >= 0 ? '+' : '';
+    return {
+      amount: `${sign}${formattedAmount}`,
+      percentage: `${sign}${formattedPercentage}%`,
+      isPositive: gainLoss >= 0
+    };
+  };
+
 
   if (loading) return <div>Loading dashboard...</div>;
   if (error) return <div className="error-message">{error}</div>;
@@ -60,7 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
       <section className="account-summary-section">
         <h3>Account Summary & Goals Progress</h3>
         <div className="account-summary-grid">
-          {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) && 
+          {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) &&
             dashboardData.assetsByAccount.map((accountData: any, index: number) => {
               const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account.name === accountData.account);
               const brlTotal = accountInvestments
@@ -69,16 +80,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
               const cadTotal = accountInvestments
                 .filter(inv => inv.currency === 'CAD')
                 .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
-              
+
               // Determine primary country based on which currency has higher total
               const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
               const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
-              
+
               // Find corresponding account goals data
               const accountGoals = dashboardData.accountGoals?.find(
                 (goal: any) => goal.accountName === accountData.account
               );
-              
+
               return (
                 <div key={index} className="account-summary-card enhanced">
                   <div className="account-summary-header">
@@ -88,18 +99,38 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     </div>
                     <span className="investment-count">{accountInvestments.length} investments</span>
                   </div>
-                  
+
                   <div className="account-summary-totals">
                     {brlTotal > 0 && (
                       <div className="currency-total">
                         <span className="currency-label">BRL:</span>
                         <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
+                        {accountGoals?.performance && accountGoals.currency === 'BRL' && accountGoals.performance.totalGainLoss !== 0 && (
+                          <div className="performance-indicator">
+                            <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').amount}
+                            </span>
+                            <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').percentage})
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {cadTotal > 0 && (
                       <div className="currency-total">
                         <span className="currency-label">CAD:</span>
                         <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
+                        {accountGoals?.performance && accountGoals.currency === 'CAD' && accountGoals.performance.totalGainLoss !== 0 && (
+                          <div className="performance-indicator">
+                            <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').amount}
+                            </span>
+                            <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').percentage})
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -112,14 +143,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                         {[1, 2, 3, 4, 5].map((year) => {
                           const goalKey = `year${year}` as keyof typeof accountGoals.goals;
                           const goalValue = accountGoals.goals[goalKey];
-                          
+
                           if (!goalValue) return null;
-                          
+
                           const currentValue = accountGoals.currentValue;
                           const progress = Math.min((currentValue / goalValue) * 100, 100);
                           const progressColor = getProgressColor(progress);
                           const displayYear = 2024 + year; // 2025, 2026, 2027, 2028, 2029
-                          
+
                           return (
                             <div key={year} className="compact-goal-item">
                               <div className="compact-goal-header">
@@ -127,11 +158,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                                 <span className="goal-percentage">{Math.round(progress)}%</span>
                               </div>
                               <div className="compact-progress-bar-container">
-                                <div 
+                                <div
                                   className="compact-progress-bar"
-                                  style={{ 
-                                    width: `${progress}%`, 
-                                    backgroundColor: progressColor 
+                                  style={{
+                                    width: `${progress}%`,
+                                    backgroundColor: progressColor
                                   }}
                                 />
                               </div>
@@ -145,7 +176,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     </div>
                   )}
 
-                  <button 
+                  {/* Account Performance Summary */}
+                  {accountGoals?.performance && accountGoals.performance.totalGainLoss !== 0 && (
+                    <div className="account-performance-summary">
+                      <div className="performance-label">Overall Performance:</div>
+                      <div className="performance-values">
+                        <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                          {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, accountGoals.currency).amount}
+                        </span>
+                        <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                          ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, accountGoals.currency).percentage})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
                     className="view-account-btn"
                     onClick={() => onNavigateToAccount?.(accountData.account)}
                   >
@@ -210,7 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry: any) => 
+                  label={(entry: any) =>
                     `${getCategoryLabel(entry.category)}: ${entry.percentage}%`
                   }
                   outerRadius={80}
@@ -221,13 +267,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value, _name, props: any) => [
                     `$${value} (${props.payload.percentage}%)`,
                     `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
-                  ]} 
+                  ]}
                 />
-                <Legend 
+                <Legend
                   formatter={(_value, entry: any) => getCategoryLabel(entry.payload.category)}
                 />
               </PieChart>
