@@ -6,6 +6,7 @@ export interface Account {
   goal3?: number;
   goal4?: number;
   goal5?: number;
+  sortOrder: number;
 }
 
 export interface CreateAccountRequest {
@@ -15,4 +16,5 @@ export interface CreateAccountRequest {
   goal3?: number;
   goal4?: number;
   goal5?: number;
+  sortOrder: number;
 }

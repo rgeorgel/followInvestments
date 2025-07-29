@@ -17,7 +17,9 @@
       "Bash(dotnet build)",
       "Bash(dotnet ef database:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker logs:*)"
     ],
     "deny": []
   }

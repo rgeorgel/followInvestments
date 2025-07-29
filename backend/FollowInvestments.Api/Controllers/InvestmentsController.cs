@@ -111,6 +111,12 @@ public class InvestmentsController : ControllerBase
             .Include(i => i.Account)
             .ToListAsync();
         
+        // Get all accounts sorted by sort order for consistent ordering
+        var allAccounts = await _context.Accounts
+            .OrderBy(a => a.SortOrder)
+            .ThenBy(a => a.Name)
+            .ToListAsync();
+        
         // Group by category, account, and name - sum total (quantity * value)
         var groupedInvestments = investments
             .GroupBy(i => new { i.Category, AccountName = i.Account.Name, InvestmentName = i.Name })
@@ -127,9 +133,15 @@ public class InvestmentsController : ControllerBase
             })
             .ToList();
         
-        var assetsByAccount = groupedInvestments
+        // Get assets by account grouped and maintain sort order
+        var assetsByAccountDict = groupedInvestments
             .GroupBy(i => i.Account)
-            .Select(g => new { Account = g.Key, Total = g.Sum(i => i.Total) })
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Total));
+        
+        // Create ordered list based on account sort order
+        var assetsByAccount = allAccounts
+            .Where(a => assetsByAccountDict.ContainsKey(a.Name))
+            .Select(a => new { Account = a.Name, Total = assetsByAccountDict[a.Name] })
             .ToList();
             
         var assetsByCountry = groupedInvestments
@@ -151,7 +163,6 @@ public class InvestmentsController : ControllerBase
             .ToList();
 
         // Calculate account goals progress - get all accounts, not just those with investments
-        var allAccounts = await _context.Accounts.ToListAsync();
         var accountGoals = allAccounts.Select(account => 
         {
             var accountInvestments = investments.Where(i => i.AccountId == account.Id).ToList();

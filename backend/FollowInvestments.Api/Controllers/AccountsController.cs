@@ -19,7 +19,10 @@ public class AccountsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Account>>> GetAccounts()
     {
-        return await _context.Accounts.ToListAsync();
+        return await _context.Accounts
+            .OrderBy(a => a.SortOrder)
+            .ThenBy(a => a.Name)
+            .ToListAsync();
     }
 
     [HttpGet("{id}")]

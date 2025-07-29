@@ -28,6 +28,8 @@ public class Account
     [Column(TypeName = "decimal(18,2)")]
     public decimal? Goal5 { get; set; }
 
+    public int SortOrder { get; set; } = 0;
+
     // Navigation property
     public ICollection<Investment> Investments { get; set; } = new List<Investment>();
 }
@@ -43,4 +45,5 @@ public class CreateAccountRequest
     public decimal? Goal3 { get; set; }
     public decimal? Goal4 { get; set; }
     public decimal? Goal5 { get; set; }
+    public int SortOrder { get; set; } = 0;
 }

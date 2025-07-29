@@ -81,6 +81,7 @@ const AccountList: React.FC = () => {
           <table>
             <thead>
               <tr>
+                <th>Sort Order</th>
                 <th>Account Name</th>
                 <th>Goal Year 1</th>
                 <th>Goal Year 2</th>
@@ -93,6 +94,7 @@ const AccountList: React.FC = () => {
             <tbody>
               {accounts.map((account) => (
                 <tr key={account.id}>
+                  <td className="sort-order">{account.sortOrder}</td>
                   <td className="account-name">{account.name}</td>
                   <td>{formatCurrency(account.goal1)}</td>
                   <td>{formatCurrency(account.goal2)}</td>

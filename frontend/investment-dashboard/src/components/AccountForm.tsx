@@ -15,6 +15,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onSuccess, onCancel }) => {
     goal3: undefined,
     goal4: undefined,
     goal5: undefined,
+    sortOrder: 0,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +145,22 @@ const AccountForm: React.FC<AccountFormProps> = ({ onSuccess, onCancel }) => {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="sortOrder">Sort Order:</label>
+            <input
+              type="number"
+              id="sortOrder"
+              name="sortOrder"
+              value={formData.sortOrder}
+              onChange={handleInputChange}
+              min="0"
+              placeholder="0"
+            />
+            <small style={{ color: '#7f8c8d', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+              Lower numbers appear first in the list
+            </small>
           </div>
 
           <div className="form-buttons">

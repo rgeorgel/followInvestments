@@ -726,6 +726,13 @@
   background-color: #f8f9fa;
 }
 
+.accounts-table .sort-order {
+  text-align: center;
+  font-weight: bold;
+  color: #3498db;
+  min-width: 80px;
+}
+
 .accounts-table .account-name {
   font-weight: bold;
   color: #2c3e50;
