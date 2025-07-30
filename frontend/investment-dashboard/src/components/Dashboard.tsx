@@ -74,21 +74,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
           {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) &&
             dashboardData.assetsByAccount.map((accountData: any, index: number) => {
               const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account.name === accountData.account);
-              const brlTotal = accountInvestments
-                .filter(inv => inv.currency === 'BRL')
-                .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
-              const cadTotal = accountInvestments
-                .filter(inv => inv.currency === 'CAD')
-                .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
-
-              // Determine primary country based on which currency has higher total
-              const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
-              const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
-
+              
               // Find corresponding account goals data
               const accountGoals = dashboardData.accountGoals?.find(
                 (goal: any) => goal.accountName === accountData.account
               );
+
+              // Use current value from performance if available, otherwise use invested value
+              let brlTotal = 0;
+              let cadTotal = 0;
+
+              if (accountGoals?.performance) {
+                // Use current values from performance data
+                const brlInvestments = accountGoals.performance.investments.filter((inv: any) => inv.currency === 'BRL');
+                const cadInvestments = accountGoals.performance.investments.filter((inv: any) => inv.currency === 'CAD');
+                brlTotal = brlInvestments.reduce((sum: number, inv: any) => sum + inv.currentValue, 0);
+                cadTotal = cadInvestments.reduce((sum: number, inv: any) => sum + inv.currentValue, 0);
+              } else {
+                // Fallback to invested values
+                brlTotal = accountInvestments
+                  .filter(inv => inv.currency === 'BRL')
+                  .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                cadTotal = accountInvestments
+                  .filter(inv => inv.currency === 'CAD')
+                  .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+              }
+
+              // Determine primary country based on which currency has higher total
+              const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
+              const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
 
               return (
                 <div key={index} className="account-summary-card enhanced">
