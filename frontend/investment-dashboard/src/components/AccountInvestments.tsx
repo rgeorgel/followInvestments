@@ -10,12 +10,17 @@ interface AccountInvestmentsProps {
   onBack: () => void;
 }
 
+type SortField = 'name' | 'date' | 'category' | 'purchasePrice' | 'currentPrice' | 'quantity' | 'currentValue' | 'percentage' | 'gainLoss';
+type SortDirection = 'asc' | 'desc';
+
 const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack }) => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [accountPerformance, setAccountPerformance] = useState<AccountPerformance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [sortField, setSortField] = useState<SortField>('percentage');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
     fetchInvestments();
@@ -71,6 +76,78 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
       percentage: `${sign}${formattedPercentage}%`,
       isPositive: gainLoss >= 0
     };
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortedInvestments = () => {
+    const totalAccountValue = accountPerformance ? 
+      accountPerformance.currentValue : 
+      investments.reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+
+    return [...investments].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      const aPerformance = accountPerformance?.investments.find(ip => ip.investmentId === a.id);
+      const bPerformance = accountPerformance?.investments.find(ip => ip.investmentId === b.id);
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'date':
+          aValue = new Date(a.date).getTime();
+          bValue = new Date(b.date).getTime();
+          break;
+        case 'category':
+          aValue = getCategoryLabel(a.category).toLowerCase();
+          bValue = getCategoryLabel(b.category).toLowerCase();
+          break;
+        case 'purchasePrice':
+          aValue = a.value;
+          bValue = b.value;
+          break;
+        case 'currentPrice':
+          aValue = aPerformance?.currentPrice || 0;
+          bValue = bPerformance?.currentPrice || 0;
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'currentValue':
+          aValue = aPerformance ? aPerformance.currentValue : (a.total || (a.value * a.quantity));
+          bValue = bPerformance ? bPerformance.currentValue : (b.total || (b.value * b.quantity));
+          break;
+        case 'percentage':
+          const aCurrentValue = aPerformance ? aPerformance.currentValue : (a.total || (a.value * a.quantity));
+          const bCurrentValue = bPerformance ? bPerformance.currentValue : (b.total || (b.value * b.quantity));
+          aValue = totalAccountValue > 0 ? (aCurrentValue / totalAccountValue) * 100 : 0;
+          bValue = totalAccountValue > 0 ? (bCurrentValue / totalAccountValue) * 100 : 0;
+          break;
+        case 'gainLoss':
+          aValue = aPerformance?.gainLoss || 0;
+          bValue = bPerformance?.gainLoss || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      } else {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+    });
   };
 
   const handleEdit = (investment: Investment) => {
@@ -254,22 +331,55 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Purchase Price</th>
-                <th>Current Price</th>
-                <th>Quantity</th>
-                <th>Current Value</th>
-                <th>Gain/Loss</th>
+                <th className="sortable" onClick={() => handleSort('name')}>
+                  Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('date')}>
+                  Date {sortField === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('category')}>
+                  Category {sortField === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('purchasePrice')}>
+                  Purchase Price {sortField === 'purchasePrice' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('currentPrice')}>
+                  Current Price {sortField === 'currentPrice' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('quantity')}>
+                  Quantity {sortField === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('currentValue')}>
+                  Current Value {sortField === 'currentValue' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('percentage')}>
+                  % of Account {sortField === 'percentage' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable" onClick={() => handleSort('gainLoss')}>
+                  Gain/Loss {sortField === 'gainLoss' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {investments.map((investment: Investment) => {
+              {getSortedInvestments().map((investment: Investment) => {
                 const investmentPerformance = accountPerformance?.investments.find(
                   ip => ip.investmentId === investment.id
                 );
+
+                // Calculate the current value of this investment
+                const currentInvestmentValue = investmentPerformance ? 
+                  investmentPerformance.currentValue : 
+                  (investment.total || (investment.value * investment.quantity));
+
+                // Calculate total account value for percentage calculation
+                const totalAccountValue = accountPerformance ? 
+                  accountPerformance.currentValue : 
+                  investments.reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+
+                // Calculate percentage of account
+                const percentageOfAccount = totalAccountValue > 0 ? 
+                  (currentInvestmentValue / totalAccountValue) * 100 : 0;
 
                 return (
                   <tr key={investment.id}>
@@ -289,6 +399,9 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
                         formatCurrency(investmentPerformance.currentValue, investment.currency) :
                         formatCurrency(investment.total || (investment.value * investment.quantity), investment.currency)
                       }
+                    </td>
+                    <td className="percentage-column">
+                      {percentageOfAccount.toFixed(1)}%
                     </td>
                     <td>
                       {investmentPerformance && investmentPerformance.gainLoss !== 0 ? (
