@@ -27,85 +27,6 @@ public class InvestmentsController : ControllerBase
             .ToListAsync();
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Investment>> GetInvestment(int id)
-    {
-        var investment = await _context.Investments
-            .Include(i => i.Account)
-            .FirstOrDefaultAsync(i => i.Id == id);
-
-        if (investment == null)
-        {
-            return NotFound();
-        }
-
-        return investment;
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<Investment>> PostInvestment([FromBody] CreateInvestmentRequest investment)
-    {
-        var newInvestment = new Investment
-        {
-            Name = investment.Name,
-            Value = investment.Value,
-            Quantity = investment.Quantity,
-            Currency = investment.Currency,
-            Date = investment.Date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(investment.Date, DateTimeKind.Utc) : investment.Date,
-            Description = investment.Description,
-            Category = investment.Category,
-            AccountId = investment.AccountId
-        };
-
-        _context.Investments.Add(newInvestment);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetInvestment), new { id = newInvestment.Id }, newInvestment);
-    }
-
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutInvestment(int id, Investment investment)
-    {
-        if (id != investment.Id)
-        {
-            return BadRequest();
-        }
-
-        _context.Entry(investment).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!InvestmentExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
-
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteInvestment(int id)
-    {
-        var investment = await _context.Investments.FindAsync(id);
-        if (investment == null)
-        {
-            return NotFound();
-        }
-
-        _context.Investments.Remove(investment);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
 
     [HttpGet("dashboard")]
     public async Task<ActionResult<DashboardData>> GetDashboardData()
@@ -209,6 +130,167 @@ public class InvestmentsController : ControllerBase
         };
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<Investment>> GetInvestment(int id)
+    {
+        var investment = await _context.Investments
+            .Include(i => i.Account)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (investment == null)
+        {
+            return NotFound();
+        }
+
+        return investment;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Investment>> PostInvestment([FromBody] CreateInvestmentRequest investment)
+    {
+        var newInvestment = new Investment
+        {
+            Name = investment.Name,
+            Value = investment.Value,
+            Quantity = investment.Quantity,
+            Currency = investment.Currency,
+            Date = investment.Date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(investment.Date, DateTimeKind.Utc) : investment.Date,
+            Description = investment.Description,
+            Category = investment.Category,
+            AccountId = investment.AccountId
+        };
+
+        _context.Investments.Add(newInvestment);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetInvestment), new { id = newInvestment.Id }, newInvestment);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutInvestment(int id, Investment investment)
+    {
+        if (id != investment.Id)
+        {
+            return BadRequest();
+        }
+
+        _context.Entry(investment).State = EntityState.Modified;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!InvestmentExists(id))
+            {
+                return NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteInvestment(int id)
+    {
+        var investment = await _context.Investments.FindAsync(id);
+        if (investment == null)
+        {
+            return NotFound();
+        }
+
+        _context.Investments.Remove(investment);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpGet("portfolio/timeline")]
+    public async Task<ActionResult<InvestmentTimelineData>> GetTimeline()
+    {
+        var investments = await _context.Investments
+            .Include(i => i.Account)
+            .ToListAsync();
+
+        var allAccounts = await _context.Accounts
+            .OrderBy(a => a.SortOrder)
+            .ThenBy(a => a.Name)
+            .ToListAsync();
+
+        // Create timeline data points based on investment dates
+        var timelinePoints = new List<TimelinePoint>();
+        
+        // Get all unique investment dates and sort them
+        var investmentDates = investments
+            .Select(i => i.Date.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        // Calculate cumulative portfolio value at each date
+        foreach (var date in investmentDates)
+        {
+            var investmentsUpToDate = investments
+                .Where(i => i.Date.Date <= date)
+                .ToList();
+
+            var totalValue = investmentsUpToDate.Sum(i => i.Total);
+            
+            timelinePoints.Add(new TimelinePoint
+            {
+                Date = date,
+                TotalValue = totalValue,
+                BrlValue = investmentsUpToDate.Where(i => i.Currency == Currency.BRL).Sum(i => i.Total),
+                CadValue = investmentsUpToDate.Where(i => i.Currency == Currency.CAD).Sum(i => i.Total)
+            });
+        }
+
+        // Create goal markers for visualization
+        var goalMarkers = new List<GoalMarker>();
+        var currentYear = DateTime.Now.Year;
+        
+        foreach (var account in allAccounts)
+        {
+            var currency = GetAccountCurrency(account);
+            if (account.Goal1.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 1, Value = account.Goal1.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 1" });
+            if (account.Goal2.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 2, Value = account.Goal2.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 2" });
+            if (account.Goal3.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 3, Value = account.Goal3.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 3" });
+            if (account.Goal4.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 4, Value = account.Goal4.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 4" });
+            if (account.Goal5.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 5, Value = account.Goal5.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 5" });
+        }
+
+        return new InvestmentTimelineData
+        {
+            TimelinePoints = timelinePoints,
+            GoalMarkers = goalMarkers,
+            CurrentTotalValue = timelinePoints.LastOrDefault()?.TotalValue ?? 0,
+            CurrentBrlValue = timelinePoints.LastOrDefault()?.BrlValue ?? 0,
+            CurrentCadValue = timelinePoints.LastOrDefault()?.CadValue ?? 0
+        };
+    }
+
+    private string GetAccountCurrency(Account account)
+    {
+        // Determine account currency based on its investments
+        var accountInvestments = _context.Investments.Where(i => i.AccountId == account.Id).ToList();
+        if (!accountInvestments.Any()) return "CAD"; // Default
+        
+        var brlCount = accountInvestments.Count(i => i.Currency == Currency.BRL);
+        var cadCount = accountInvestments.Count(i => i.Currency == Currency.CAD);
+        
+        return brlCount > cadCount ? "BRL" : "CAD";
+    }
+
     [HttpGet("account/{accountId}/performance")]
     public async Task<ActionResult<AccountPerformance>> GetAccountPerformance(int accountId)
     {
@@ -295,3 +377,4 @@ public class GoalValues
     public decimal? Year4 { get; set; }
     public decimal? Year5 { get; set; }
 }
+

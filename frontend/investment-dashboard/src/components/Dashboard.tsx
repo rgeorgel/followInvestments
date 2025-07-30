@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { DashboardData } from '../types/Investment';
+import type { DashboardData, InvestmentTimelineData } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
+import InvestmentTimeline from './InvestmentTimeline';
 
 interface DashboardProps {
   onNavigateToAccount?: (account: string) => void;
@@ -30,6 +31,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     try {
       setLoading(true);
       const data = await investmentApi.getDashboard();
+      
+      // Fetch real timeline data based on actual investment dates
+      const timelineData = await investmentApi.getTimeline();
+      data.timelineData = timelineData;
+      
       setDashboardData(data);
     } catch (err) {
       setError('Failed to fetch dashboard data');
@@ -295,6 +301,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
           </div>
         </div>
       </section>
+
+      {/* Investment Timeline - moved to bottom */}
+      {dashboardData.timelineData && (
+        <section className="timeline-section">
+          <InvestmentTimeline timelineData={dashboardData.timelineData} />
+        </section>
+      )}
     </div>
   );
 };

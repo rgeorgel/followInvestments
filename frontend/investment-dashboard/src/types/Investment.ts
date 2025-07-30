@@ -137,4 +137,28 @@ export interface DashboardData {
   assetsByCountry: { country: string; total: number }[];
   assetsByCategory: AssetByCategory[];
   accountGoals: AccountGoalProgress[];
+  timelineData?: InvestmentTimelineData;
+}
+
+export interface InvestmentTimelineData {
+  timelinePoints: TimelinePoint[];
+  goalMarkers: GoalMarker[];
+  currentTotalValue: number;
+  currentBrlValue: number;
+  currentCadValue: number;
+}
+
+export interface TimelinePoint {
+  date: string;
+  totalValue: number;
+  brlValue: number;
+  cadValue: number;
+}
+
+export interface GoalMarker {
+  year: number;
+  value: number;
+  currency: string;
+  accountName: string;
+  label: string;
 }
