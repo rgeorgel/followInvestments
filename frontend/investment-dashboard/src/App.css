@@ -135,6 +135,36 @@
   border-bottom: 1px solid #eee;
 }
 
+.dashboard-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.portfolio-total {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.total-label {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.total-value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #27ae60;
+  padding: 0.25rem 0.75rem;
+  background-color: #f8fafb;
+  border-radius: 6px;
+  border-left: 4px solid #27ae60;
+}
+
 .investments-list {
   margin-bottom: 3rem;
 }
@@ -1167,6 +1197,25 @@
   .account-summary-section h3 {
     font-size: 1.3rem;
     margin-bottom: 1rem;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .dashboard-title-section {
+    text-align: center;
+  }
+  
+  .portfolio-total {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .total-value {
+    font-size: 1.1rem;
   }
   
   .account-list-header {

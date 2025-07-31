@@ -145,6 +145,50 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     return selectedCurrency === 'Original' ? originalCurrency : selectedCurrency;
   };
 
+  const calculateTotalPortfolioValue = (): { total: number, display: string } => {
+    if (!dashboardData?.accountGoals) {
+      return { total: 0, display: '$0' };
+    }
+
+    if (selectedCurrency === 'Original') {
+      // For original currency, calculate totals per currency
+      let brlTotal = 0;
+      let cadTotal = 0;
+      let usdTotal = 0;
+
+      dashboardData.accountGoals.forEach((account: any) => {
+        if (account.currency === 'BRL') {
+          brlTotal += account.currentValue;
+        } else if (account.currency === 'CAD') {
+          cadTotal += account.currentValue;
+        } else if (account.currency === 'USD') {
+          usdTotal += account.currentValue;
+        }
+      });
+
+      // Format as multiple currencies if more than one exists
+      const parts = [];
+      if (brlTotal > 0) parts.push(formatCurrency(brlTotal, 'BRL'));
+      if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
+      if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
+      
+      return { 
+        total: brlTotal + cadTotal + usdTotal, 
+        display: parts.length > 1 ? parts.join(' + ') : (parts[0] || '$0')
+      };
+    } else {
+      // For converted currency, sum all converted values
+      const convertedTotal = dashboardData.accountGoals.reduce((sum: number, account: any) => {
+        return sum + getConvertedValue(account.currentValue, account.currency);
+      }, 0);
+
+      return {
+        total: convertedTotal,
+        display: formatCurrency(convertedTotal, selectedCurrency)
+      };
+    }
+  };
+
   // Helper functions for chart data conversion
   const convertChartData = (data: any[]) => {
     if (selectedCurrency === 'Original') {
@@ -213,10 +257,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     });
   };
 
+  const portfolioTotal = calculateTotalPortfolioValue();
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h2>Investment Dashboard</h2>
+        <div className="dashboard-title-section">
+          <h2>Investment Dashboard</h2>
+          <div className="portfolio-total">
+            <span className="total-label">Total Portfolio:</span>
+            <span className="total-value">{portfolioTotal.display}</span>
+          </div>
+        </div>
         <CurrencySelector
           selectedCurrency={selectedCurrency}
           onCurrencyChange={handleCurrencyChange}
