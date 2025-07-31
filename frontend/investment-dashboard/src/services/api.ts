@@ -78,7 +78,7 @@ export const investmentApi = {
   },
 
   // Get timeline data based on real investment dates with current market values
-  getTimeline: async () => {
+  getTimeline: async (targetCurrency?: string) => {
     const allInvestments = await investmentApi.getAll();
     const dashboardData = await investmentApi.getDashboard();
     
@@ -321,4 +321,36 @@ export const investmentApi = {
       currentCadValue: lastPoint?.cadValue || 0
     };
   },
+
+  // Currency conversion functions
+  currency: {
+    getRates: async () => {
+      const response = await api.get('/currency/rates');
+      return response.data;
+    },
+
+    getRate: async (fromCurrency: string, toCurrency: string) => {
+      const response = await api.get(`/currency/rate/${fromCurrency}/${toCurrency}`);
+      return response.data;
+    },
+
+    convertAmount: async (amount: number, fromCurrency: string, toCurrency: string) => {
+      const response = await api.post('/currency/convert', {
+        amount,
+        fromCurrency,
+        toCurrency
+      });
+      return response.data;
+    },
+
+    getPortfolioInCurrency: async (currency: string) => {
+      const response = await api.get(`/currency/portfolio/${currency}`);
+      return response.data;
+    },
+
+    updateRates: async () => {
+      const response = await api.post('/currency/update-rates');
+      return response.data;
+    }
+  }
 };

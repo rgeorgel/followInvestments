@@ -12,6 +12,7 @@ public class InvestmentContext : DbContext
     public DbSet<Investment> Investments { get; set; }
     public DbSet<Account> Accounts { get; set; }
     public DbSet<StockPrice> StockPrices { get; set; }
+    public DbSet<ExchangeRate> ExchangeRates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,6 +112,39 @@ public class InvestmentContext : DbContext
                 
             entity.HasIndex(e => e.PriceDate)
                 .HasDatabaseName("IDX_StockPrices_Date");
+        });
+
+        modelBuilder.Entity<ExchangeRate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.FromCurrency)
+                .IsRequired()
+                .HasMaxLength(3);
+                
+            entity.Property(e => e.ToCurrency)
+                .IsRequired()
+                .HasMaxLength(3);
+                
+            entity.Property(e => e.Rate)
+                .IsRequired()
+                .HasColumnType("decimal(18,8)");
+                
+            entity.Property(e => e.LastUpdated)
+                .HasColumnType("timestamp without time zone");
+                
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Unique constraint: one record per currency pair
+            entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency })
+                .IsUnique()
+                .HasDatabaseName("UK_ExchangeRates_Currencies");
+                
+            // Performance index for lookups
+            entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency, e.LastUpdated })
+                .HasDatabaseName("IDX_ExchangeRates_Lookup");
         });
     }
 }

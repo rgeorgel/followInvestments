@@ -4,11 +4,13 @@ import type { InvestmentTimelineData, TimelinePoint, GoalMarker } from '../types
 
 interface InvestmentTimelineProps {
   timelineData: InvestmentTimelineData;
+  displayCurrency?: string;
 }
 
-const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData }) => {
+const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, displayCurrency }) => {
   const formatCurrency = (value: number, currency: string = 'CAD') => {
-    const currencyCode = currency === 'BRL' ? 'BRL' : 'CAD';
+    // Use the display currency if provided, otherwise use the original currency
+    const currencyCode = displayCurrency || (currency === 'BRL' ? 'BRL' : (currency === 'USD' ? 'USD' : 'CAD'));
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode,
@@ -66,7 +68,7 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData })
   return (
     <div className="investment-timeline">
       <div className="timeline-header">
-        <h3>Portfolio Growth Timeline</h3>
+        <h3>Portfolio Growth Timeline {displayCurrency ? `(${displayCurrency})` : ''}</h3>
         <div className="timeline-summary">
           <div className="summary-item">
             <span className="label">Current Total:</span>

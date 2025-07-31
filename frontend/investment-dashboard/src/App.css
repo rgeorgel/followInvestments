@@ -123,8 +123,16 @@
 
 .dashboard h2 {
   color: #2c3e50;
-  text-align: center;
+  margin: 0;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
 }
 
 .investments-list {
@@ -424,6 +432,13 @@
   font-size: 1.1rem;
 }
 
+.conversion-note {
+  font-size: 0.75rem;
+  color: #7f8c8d;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
 .performance-indicator {
   display: flex;
   align-items: center;
@@ -694,6 +709,36 @@
 
 .goals-section:last-child {
   margin-bottom: 0;
+}
+
+/* Currency Selector Styles */
+.currency-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.currency-selector label {
+  font-weight: bold;
+  color: #34495e;
+  margin: 0;
+}
+
+.currency-select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #2c3e50;
+  font-size: 1rem;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.currency-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
 /* Responsive timeline styles */

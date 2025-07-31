@@ -25,6 +25,9 @@ builder.Services.AddHttpClient<IYahooFinanceService, YahooFinanceService>();
 // Add Investment Performance service
 builder.Services.AddScoped<IInvestmentPerformanceService, InvestmentPerformanceService>();
 
+// Add Currency service with HttpClient
+builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -34,7 +37,8 @@ builder.Services.AddCors(options =>
             policy.WithOrigins("http://localhost:9000",
                                "http://localhost:9001",
                                "http://localhost:3000",
-                               "http://localhost:5173")
+                               "http://localhost:5173",
+                               "*")
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();

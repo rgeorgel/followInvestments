@@ -4,6 +4,7 @@ import type { DashboardData, InvestmentTimelineData } from '../types/Investment'
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
 import InvestmentTimeline from './InvestmentTimeline';
+import CurrencySelector from './CurrencySelector';
 
 interface DashboardProps {
   onNavigateToAccount?: (account: string) => void;
@@ -15,11 +16,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('Original'); // Default to Original
+  const [exchangeRates, setExchangeRates] = useState<{[key: string]: number}>({});
+  const [convertedData, setConvertedData] = useState<any>(null);
 
   const getProgressColor = (progress: number) => {
     if (progress >= 100) return '#27ae60'; // Green - Goal reached
-    if (progress >= 75) return '#f39c12';   // Orange - Close to goal
-    if (progress >= 50) return '#3498db';   // Blue - Halfway
+    if (progress >= 75) return '#3498db';   // Blue - Halfway
+    if (progress >= 50) return '#f39c12';   // Orange - Close to goal
     return '#e74c3c'; // Red - Far from goal
   };
 
@@ -31,11 +35,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     try {
       setLoading(true);
       const data = await investmentApi.getDashboard();
-      
+
       // Fetch real timeline data based on actual investment dates
       const timelineData = await investmentApi.getTimeline();
       data.timelineData = timelineData;
-      
+
       setDashboardData(data);
     } catch (err) {
       setError('Failed to fetch dashboard data');
@@ -45,12 +49,68 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     }
   };
 
-  const formatCurrency = (value: number, currency: string) => {
-    const currencyCode = currency === 'BRL' ? 'BRL' : 'CAD';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode,
-    }).format(value);
+  // Convert timeline data based on selected currency
+  const getConvertedTimelineData = (timelineData: any) => {
+    if (!timelineData || selectedCurrency === 'Original') {
+      return timelineData;
+    }
+
+    return {
+      ...timelineData,
+      timelinePoints: timelineData.timelinePoints.map((point: any) => ({
+        ...point,
+        totalValue: getConvertedValue(point.brlValue, 'BRL') + getConvertedValue(point.cadValue, 'CAD'),
+        brlValue: getConvertedValue(point.brlValue, 'BRL'),
+        cadValue: getConvertedValue(point.cadValue, 'CAD')
+      })),
+      goalMarkers: timelineData.goalMarkers.map((goal: any) => ({
+        ...goal,
+        value: getConvertedValue(goal.value, goal.currency),
+        currency: selectedCurrency,
+        label: goal.label.replace(goal.currency, selectedCurrency)
+      })),
+      currentTotalValue: getConvertedValue(timelineData.currentBrlValue, 'BRL') + getConvertedValue(timelineData.currentCadValue, 'CAD'),
+      currentBrlValue: getConvertedValue(timelineData.currentBrlValue, 'BRL'),
+      currentCadValue: getConvertedValue(timelineData.currentCadValue, 'CAD')
+    };
+  };
+
+  const formatCurrency = (value: number, originalCurrency: string) => {
+    if (selectedCurrency === 'Original') {
+      // Display in original currency
+      const currencyCode = originalCurrency === 'BRL' ? 'BRL' : (originalCurrency === 'USD' ? 'USD' : 'CAD');
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+      }).format(value);
+    } else {
+      // Display in selected currency with conversion
+      const convertedValue = convertCurrency(value, originalCurrency, selectedCurrency);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: selectedCurrency,
+      }).format(convertedValue);
+    }
+  };
+
+  const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
+    if (fromCurrency === toCurrency || selectedCurrency === 'Original') {
+      return amount;
+    }
+
+    // Simple conversion using mock rates (since Yahoo Finance is rate-limited)
+    // In a real implementation, these would come from the exchange rates API
+    const mockRates: {[key: string]: {[key: string]: number}} = {
+      'BRL': { 'USD': 0.18, 'CAD': 0.25 },
+      'CAD': { 'USD': 0.73, 'BRL': 4.0 },
+      'USD': { 'CAD': 1.37, 'BRL': 5.5 }
+    };
+
+    if (mockRates[fromCurrency] && mockRates[fromCurrency][toCurrency]) {
+      return amount * mockRates[fromCurrency][toCurrency];
+    }
+
+    return amount; // Fallback to original amount
   };
 
   const formatPerformance = (gainLoss: number, percentage: number, currency: string) => {
@@ -69,9 +129,99 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   if (error) return <div className="error-message">{error}</div>;
   if (!dashboardData) return <div>No data available</div>;
 
+  const handleCurrencyChange = (currency: string) => {
+    setSelectedCurrency(currency);
+    console.log(`Currency changed to: ${currency}`);
+  };
+
+  const getConvertedValue = (value: number, originalCurrency: string): number => {
+    if (selectedCurrency === 'Original') {
+      return value;
+    }
+    return convertCurrency(value, originalCurrency, selectedCurrency);
+  };
+
+  const getDisplayCurrency = (originalCurrency: string): string => {
+    return selectedCurrency === 'Original' ? originalCurrency : selectedCurrency;
+  };
+
+  // Helper functions for chart data conversion
+  const convertChartData = (data: any[]) => {
+    if (selectedCurrency === 'Original') {
+      return data; // No conversion needed
+    }
+
+    return data.map((item: any) => {
+      // For account-based data, convert based on account's primary currency
+      if (item.account) {
+        const accountData = dashboardData?.accountGoals?.find((goal: any) => goal.accountName === item.account);
+        const accountCurrency = accountData?.currency || 'CAD';
+        return {
+          ...item,
+          total: getConvertedValue(item.total, accountCurrency)
+        };
+      }
+
+      // For other data, handle differently based on context
+      return {
+        ...item,
+        total: item.total // Will be handled per chart type
+      };
+    });
+  };
+
+  const convertCountryData = (data: any[]) => {
+    if (selectedCurrency === 'Original') {
+      return data;
+    }
+
+    return data.map((item: any) => {
+      // Convert based on country's primary currency
+      const countryCurrency = item.country === 'Brazil' ? 'BRL' : 'CAD';
+      return {
+        ...item,
+        total: getConvertedValue(item.total, countryCurrency)
+      };
+    });
+  };
+
+  const convertCategoryData = (data: any[]) => {
+    if (selectedCurrency === 'Original') {
+      return data;
+    }
+
+    // For category data, we need to convert each category's total
+    // This is more complex as categories span multiple currencies
+    return data.map((item: any) => {
+      // Get all investments in this category
+      const categoryInvestments = dashboardData?.allInvestments.filter(
+        (inv: any) => inv.category === item.category
+      ) || [];
+
+      // Convert each investment's value and sum them
+      const convertedTotal = categoryInvestments.reduce((sum: number, inv: any) => {
+        const invValue = inv.total || (inv.value * inv.quantity);
+        return sum + getConvertedValue(invValue, inv.currency);
+      }, 0);
+
+      return {
+        ...item,
+        total: convertedTotal,
+        // Recalculate percentage based on new totals
+        percentage: 0 // Will be recalculated below
+      };
+    });
+  };
+
   return (
     <div className="dashboard">
-      <h2>Investment Dashboard</h2>
+      <div className="dashboard-header">
+        <h2>Investment Dashboard</h2>
+        <CurrencySelector
+          selectedCurrency={selectedCurrency}
+          onCurrencyChange={handleCurrencyChange}
+        />
+      </div>
 
       {/* Enhanced Summary per Account with Goal Progress */}
       <section className="account-summary-section">
@@ -80,7 +230,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
           {dashboardData.assetsByAccount && Array.isArray(dashboardData.assetsByAccount) &&
             dashboardData.assetsByAccount.map((accountData: any, index: number) => {
               const accountInvestments = dashboardData.allInvestments.filter(inv => inv.account.name === accountData.account);
-              
+
               // Find corresponding account goals data
               const accountGoals = dashboardData.accountGoals?.find(
                 (goal: any) => goal.accountName === accountData.account
@@ -106,7 +256,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
               }
 
-              // Determine primary country based on which currency has higher total
+              // For display: convert all values to selected currency for comparison if not "Original"
+              let displayBrlTotal = brlTotal;
+              let displayCadTotal = cadTotal;
+              
+              if (selectedCurrency !== 'Original') {
+                // Convert both to selected currency and combine them
+                const convertedBrl = getConvertedValue(brlTotal, 'BRL');
+                const convertedCad = getConvertedValue(cadTotal, 'CAD');
+                const combinedTotal = convertedBrl + convertedCad;
+                
+                // Show combined total in selected currency
+                displayBrlTotal = brlTotal > 0 ? combinedTotal : 0;
+                displayCadTotal = cadTotal > 0 && brlTotal === 0 ? combinedTotal : 0;
+              }
+
+              // Determine primary country based on which currency has higher original total
               const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
               const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
 
@@ -121,36 +286,52 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   </div>
 
                   <div className="account-summary-totals">
-                    {brlTotal > 0 && (
-                      <div className="currency-total">
-                        <span className="currency-label">BRL:</span>
-                        <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
-                        {accountGoals?.performance && accountGoals.currency === 'BRL' && accountGoals.performance.totalGainLoss !== 0 && (
-                          <div className="performance-indicator">
-                            <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
-                              {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').amount}
-                            </span>
-                            <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
-                              ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').percentage})
-                            </span>
+                    {selectedCurrency === 'Original' ? (
+                      // Original currency display
+                      <>
+                        {brlTotal > 0 && (
+                          <div className="currency-total">
+                            <span className="currency-label">BRL:</span>
+                            <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
+                            {accountGoals?.performance && accountGoals.currency === 'BRL' && accountGoals.performance.totalGainLoss !== 0 && (
+                              <div className="performance-indicator">
+                                <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').amount}
+                                </span>
+                                <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').percentage})
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
-                    {cadTotal > 0 && (
-                      <div className="currency-total">
-                        <span className="currency-label">CAD:</span>
-                        <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
-                        {accountGoals?.performance && accountGoals.currency === 'CAD' && accountGoals.performance.totalGainLoss !== 0 && (
-                          <div className="performance-indicator">
-                            <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
-                              {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').amount}
-                            </span>
-                            <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
-                              ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').percentage})
-                            </span>
+                        {cadTotal > 0 && (
+                          <div className="currency-total">
+                            <span className="currency-label">CAD:</span>
+                            <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
+                            {accountGoals?.performance && accountGoals.currency === 'CAD' && accountGoals.performance.totalGainLoss !== 0 && (
+                              <div className="performance-indicator">
+                                <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').amount}
+                                </span>
+                                <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').percentage})
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
+                      </>
+                    ) : (
+                      // Converted currency display
+                      <div className="currency-total">
+                        <span className="currency-label">{selectedCurrency}:</span>
+                        <span className="currency-amount">
+                          {formatCurrency(getConvertedValue(brlTotal, 'BRL') + getConvertedValue(cadTotal, 'CAD'), selectedCurrency)}
+                        </span>
+                        <div className="conversion-note">
+                          <small>Converted from {brlTotal > 0 && cadTotal > 0 ? 'BRL + CAD' : (brlTotal > 0 ? 'BRL' : 'CAD')}</small>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -229,13 +410,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
         <div className="charts-container">
           {/* Assets by Account */}
           <div className="chart-item">
-            <h3>Assets by Account</h3>
+            <h3>Assets by Account {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dashboardData.assetsByAccount}>
+              <BarChart data={convertChartData(dashboardData.assetsByAccount)}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="account" />
                 <YAxis />
-                <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
+                <Tooltip formatter={(value) => [
+                  selectedCurrency !== 'Original' 
+                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                    : `$${value}`, 
+                  'Total'
+                ]} />
                 <Legend />
                 <Bar dataKey="total" fill="#8884d8" />
               </BarChart>
@@ -244,15 +430,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
           {/* Assets by Country */}
           <div className="chart-item">
-            <h3>Assets by Country</h3>
+            <h3>Assets by Country {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={dashboardData.assetsByCountry}
+                  data={convertCountryData(dashboardData.assetsByCountry)}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ country, total }) => `${country}: $${total}`}
+                  label={({ country, total }) => 
+                    `${country}: ${selectedCurrency !== 'Original' 
+                      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(total)
+                      : `$${total}`
+                    }`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="total"
@@ -261,18 +452,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
+                <Tooltip formatter={(value) => [
+                  selectedCurrency !== 'Original' 
+                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                    : `$${value}`, 
+                  'Total'
+                ]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
           {/* Asset Allocation Breakdown */}
           <div className="chart-item">
-            <h3>Asset Allocation Breakdown</h3>
+            <h3>Asset Allocation Breakdown {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={dashboardData.assetsByCategory}
+                  data={(() => {
+                    const convertedData = convertCategoryData(dashboardData.assetsByCategory);
+                    const totalConverted = convertedData.reduce((sum, item) => sum + item.total, 0);
+                    
+                    // Recalculate percentages based on converted totals
+                    return convertedData.map(item => ({
+                      ...item,
+                      percentage: totalConverted > 0 ? Math.round((item.total / totalConverted) * 100 * 100) / 100 : 0
+                    }));
+                  })()}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -289,7 +494,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                 </Pie>
                 <Tooltip
                   formatter={(value, _name, props: any) => [
-                    `$${value} (${props.payload.percentage}%)`,
+                    `${selectedCurrency !== 'Original' 
+                      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                      : `$${value}`
+                    } (${props.payload.percentage}%)`,
                     `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
                   ]}
                 />
@@ -303,9 +511,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
       </section>
 
       {/* Investment Timeline - moved to bottom */}
-      {dashboardData.timelineData && (
+      {dashboardData.timelineData ? (
         <section className="timeline-section">
-          <InvestmentTimeline timelineData={dashboardData.timelineData} />
+          <InvestmentTimeline 
+            timelineData={getConvertedTimelineData(dashboardData.timelineData)} 
+            displayCurrency={selectedCurrency !== 'Original' ? selectedCurrency : undefined}
+          />
+        </section>
+      ) : (
+        <section className="timeline-section">
+          <div className="timeline-loading">Loading timeline data...</div>
         </section>
       )}
     </div>
