@@ -290,11 +290,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                       // Original currency display
                       <>
                         {brlTotal > 0 && (
-                          <div className="currency-total">
-                            <span className="currency-label">BRL:</span>
-                            <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
+                          <div className="currency-total-wrapper">
+                            <div className="currency-total">
+                              <span className="currency-label">BRL:</span>
+                              <span className="currency-amount">{formatCurrency(brlTotal, 'BRL')}</span>
+                            </div>
                             {accountGoals?.performance && accountGoals.currency === 'BRL' && accountGoals.performance.totalGainLoss !== 0 && (
-                              <div className="performance-indicator">
+                              <div className="performance-indicator-below">
                                 <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
                                   {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'BRL').amount}
                                 </span>
@@ -306,11 +308,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                           </div>
                         )}
                         {cadTotal > 0 && (
-                          <div className="currency-total">
-                            <span className="currency-label">CAD:</span>
-                            <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
+                          <div className="currency-total-wrapper">
+                            <div className="currency-total">
+                              <span className="currency-label">CAD:</span>
+                              <span className="currency-amount">{formatCurrency(cadTotal, 'CAD')}</span>
+                            </div>
                             {accountGoals?.performance && accountGoals.currency === 'CAD' && accountGoals.performance.totalGainLoss !== 0 && (
-                              <div className="performance-indicator">
+                              <div className="performance-indicator-below">
                                 <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
                                   {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'CAD').amount}
                                 </span>
@@ -324,14 +328,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                       </>
                     ) : (
                       // Converted currency display
-                      <div className="currency-total">
-                        <span className="currency-label">{selectedCurrency}:</span>
-                        <span className="currency-amount">
-                          {formatCurrency(getConvertedValue(brlTotal, 'BRL') + getConvertedValue(cadTotal, 'CAD'), selectedCurrency)}
-                        </span>
+                      <div className="currency-total-wrapper">
+                        <div className="currency-total">
+                          <span className="currency-label">{selectedCurrency}:</span>
+                          <span className="currency-amount">
+                            {formatCurrency(getConvertedValue(brlTotal, 'BRL') + getConvertedValue(cadTotal, 'CAD'), selectedCurrency)}
+                          </span>
+                        </div>
                         <div className="conversion-note">
                           <small>Converted from {brlTotal > 0 && cadTotal > 0 ? 'BRL + CAD' : (brlTotal > 0 ? 'BRL' : 'CAD')}</small>
                         </div>
+                        {accountGoals?.performance && accountGoals.performance.totalGainLoss !== 0 && (
+                          <div className="performance-indicator-below">
+                            <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              {(accountGoals.performance.totalGainLoss >= 0 ? '+' : '') + formatCurrency(getConvertedValue(Math.abs(accountGoals.performance.totalGainLoss), accountGoals.currency), selectedCurrency)}
+                            </span>
+                            <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                              ({accountGoals.performance.totalGainLoss >= 0 ? '+' : ''}{accountGoals.performance.totalGainLossPercentage.toFixed(2)}%)
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

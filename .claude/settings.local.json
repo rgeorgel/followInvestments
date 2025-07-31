@@ -20,7 +20,8 @@
       "Bash(mv:*)",
       "Bash(docker exec:*)",
       "Bash(docker logs:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(dotnet run:*)"
     ],
     "deny": []
   }

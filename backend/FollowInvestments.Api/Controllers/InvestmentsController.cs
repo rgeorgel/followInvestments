@@ -166,33 +166,52 @@ public class InvestmentsController : ControllerBase
         return CreatedAtAction(nameof(GetInvestment), new { id = newInvestment.Id }, newInvestment);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutInvestment(int id, Investment investment)
+    [HttpPut("{id}/test")]
+    public async Task<IActionResult> TestUpdateRequest(int id, [FromBody] UpdateInvestmentRequest updateRequest)
     {
-        if (id != investment.Id)
-        {
-            return BadRequest();
-        }
+        // Just return the received data to test deserialization
+        return Ok(new { 
+            ReceivedId = id,
+            UpdateRequest = updateRequest,
+            ModelStateValid = ModelState.IsValid,
+            ModelStateErrors = ModelState.Where(x => x.Value.Errors.Count > 0)
+                .ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage))
+        });
+    }
 
-        _context.Entry(investment).State = EntityState.Modified;
-
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutInvestment(int id, [FromBody] UpdateInvestmentRequest updateRequest)
+    {
         try
         {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!InvestmentExists(id))
+            if (id != updateRequest.Id)
+            {
+                return BadRequest("ID mismatch");
+            }
+
+            var existingInvestment = await _context.Investments.FindAsync(id);
+            if (existingInvestment == null)
             {
                 return NotFound();
             }
-            else
-            {
-                throw;
-            }
-        }
 
-        return NoContent();
+            // Update only the fields from the request
+            existingInvestment.Name = updateRequest.Name;
+            existingInvestment.Value = updateRequest.Value;
+            existingInvestment.Quantity = updateRequest.Quantity;
+            existingInvestment.Currency = updateRequest.Currency;
+            existingInvestment.Date = updateRequest.Date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(updateRequest.Date, DateTimeKind.Utc) : updateRequest.Date;
+            existingInvestment.Description = updateRequest.Description;
+            existingInvestment.Category = updateRequest.Category;
+            existingInvestment.AccountId = updateRequest.AccountId;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error: {ex.Message}");
+        }
     }
 
     [HttpDelete("{id}")]

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace FollowInvestments.Api.Models;
 
@@ -87,5 +88,35 @@ public class CreateInvestmentRequest
     public Category Category { get; set; }
 
     [Required]
+    public int AccountId { get; set; }
+}
+
+public class UpdateInvestmentRequest
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("value")]
+    public decimal Value { get; set; }
+
+    [JsonPropertyName("quantity")]
+    public decimal Quantity { get; set; }
+
+    [JsonPropertyName("currency")]
+    public Currency Currency { get; set; }
+
+    [JsonPropertyName("date")]
+    public DateTime Date { get; set; }
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("category")]
+    public Category Category { get; set; }
+
+    [JsonPropertyName("accountId")]
     public int AccountId { get; set; }
 }

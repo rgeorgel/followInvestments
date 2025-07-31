@@ -60,7 +60,7 @@ export const investmentApi = {
       date: date,
       description: investment.description,
       category: investment.category, // Keep as string
-      account: investment.account
+      accountId: investment.account.id
     };
 
     await api.put(`/investments/${id}`, payload);
