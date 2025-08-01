@@ -90,7 +90,7 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
       </div>
 
       <div className="timeline-chart">
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
@@ -142,105 +142,53 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
               />
             )}
 
-            {/* Goal markers as reference lines - show all goals */}
-            {timelineData.goalMarkers.map((goal: any, index: number) => {
-              let strokeColor, fillColor;
+            {/* Show only 5-year total goal as key milestone */}
+            {(() => {
+              const fiveYearGoal = timelineData.goalMarkers.find((goal: any) => 
+                goal.year === '2029' && (goal.currency === 'TOTAL' || goal.type === 'total')
+              );
               
-              if (goal.currency === 'BRL') {
-                strokeColor = '#28a745'; // Green for BRL
-                fillColor = '#28a745';
-              } else if (goal.currency === 'CAD') {
-                strokeColor = '#dc3545'; // Red for CAD
-                fillColor = '#dc3545';
-              } else if (goal.currency === 'TOTAL') {
-                strokeColor = '#6f42c1'; // Purple for total
-                fillColor = '#6f42c1';
-              } else {
-                strokeColor = '#6c757d'; // Gray as fallback
-                fillColor = '#6c757d';
-              }
-              
-              // Different dash patterns for different types
-              const dashArray = goal.type === 'total' ? '10 5' : '5 5';
-              const strokeWidth = goal.type === 'total' ? 3 : 2;
+              if (!fiveYearGoal) return null;
               
               return (
                 <ReferenceLine 
-                  key={`goal-${index}`}
-                  y={goal.value} 
-                  stroke={strokeColor}
-                  strokeDasharray={dashArray}
-                  strokeWidth={strokeWidth}
+                  y={fiveYearGoal.value} 
+                  stroke="#6f42c1"
+                  strokeDasharray="8 4"
+                  strokeWidth={2}
                   label={{ 
-                    value: `${goal.label}: ${formatCurrency(goal.value, goal.currency)}`, 
-                    position: index % 2 === 0 ? 'topLeft' : 'topRight',
-                    fontSize: 10,
-                    fill: fillColor
+                    value: `5-Year Goal: ${formatCurrency(fiveYearGoal.value, fiveYearGoal.currency)}`, 
+                    position: 'topRight',
+                    fontSize: 12,
+                    fill: '#6f42c1',
+                    fontWeight: 'bold'
                   }}
                 />
               );
-            })}
+            })()}
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Goal markers legend */}
-      {timelineData.goalMarkers.length > 0 && (
-        <div className="goals-legend">
-          <h4>Financial Goals</h4>
-          
-          {/* BRL Goals */}
-          <div className="goals-section">
-            <h5>🇧🇷 BRL Goals</h5>
-            <div className="goals-grid">
-              {timelineData.goalMarkers
-                .filter((goal: any) => goal.currency === 'BRL')
-                .map((goal: any) => (
-                  <div key={`brl-${goal.year}`} className="goal-item">
-                    <span className="goal-marker brl"></span>
-                    <span className="goal-text">
-                      {goal.year}: {formatCurrency(goal.value, 'BRL')}
-                    </span>
-                  </div>
-                ))}
+      {/* Simplified goal indicator */}
+      {(() => {
+        const fiveYearGoal = timelineData.goalMarkers.find((goal: any) => 
+          goal.year === '2029' && (goal.currency === 'TOTAL' || goal.type === 'total')
+        );
+        
+        if (!fiveYearGoal) return null;
+        
+        return (
+          <div className="milestone-indicator">
+            <div className="milestone-item">
+              <span className="milestone-marker"></span>
+              <span className="milestone-text">
+                <strong>2029 Target:</strong> {formatCurrency(fiveYearGoal.value, fiveYearGoal.currency)}
+              </span>
             </div>
           </div>
-          
-          {/* CAD Goals */}
-          <div className="goals-section">
-            <h5>🇨🇦 CAD Goals</h5>
-            <div className="goals-grid">
-              {timelineData.goalMarkers
-                .filter((goal: any) => goal.currency === 'CAD')
-                .map((goal: any) => (
-                  <div key={`cad-${goal.year}`} className="goal-item">
-                    <span className="goal-marker cad"></span>
-                    <span className="goal-text">
-                      {goal.year}: {formatCurrency(goal.value, 'CAD')}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </div>
-          
-          {/* Total Goals */}
-          <div className="goals-section">
-            <h5>🌍 Total Goals (Combined)</h5>
-            <div className="goals-grid">
-              {timelineData.goalMarkers
-                .filter((goal: any) => goal.currency === 'TOTAL')
-                .map((goal: any) => (
-                  <div key={`total-${goal.year}`} className="goal-item">
-                    <span className="goal-marker total"></span>
-                    <span className="goal-text">
-                      {goal.year}: {formatCurrency(goal.value, 'CAD')}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

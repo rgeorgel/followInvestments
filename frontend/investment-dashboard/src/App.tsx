@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard'
 import InvestmentForm from './components/InvestmentForm'
 import AccountInvestments from './components/AccountInvestments'
 import AccountList from './components/AccountList'
+import Logo from './components/Logo'
 
 type AppView = 'dashboard' | 'form' | 'account' | 'accounts'
 
@@ -30,7 +31,10 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Follow Investments</h1>
+        <div className="header-title">
+          <Logo size={50} showText={false} />
+          <h1>SmartWealthStack</h1>
+        </div>
         {activeView !== 'account' && (
           <nav>
             <button 

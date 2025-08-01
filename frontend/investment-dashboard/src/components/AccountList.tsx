@@ -81,26 +81,20 @@ const AccountList: React.FC = () => {
           <table>
             <thead>
               <tr>
-                <th>Sort Order</th>
                 <th>Account Name</th>
-                <th>Goal Year 1</th>
-                <th>Goal Year 2</th>
-                <th>Goal Year 3</th>
-                <th>Goal Year 4</th>
-                <th>Goal Year 5</th>
+                <th className="goal-col">Goal Year 1</th>
+                <th className="goal-col">Goal Year 3</th>
+                <th className="goal-col goal-col-hidden-mobile">Goal Year 5</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map((account) => (
                 <tr key={account.id}>
-                  <td className="sort-order">{account.sortOrder}</td>
                   <td className="account-name">{account.name}</td>
-                  <td>{formatCurrency(account.goal1)}</td>
-                  <td>{formatCurrency(account.goal2)}</td>
-                  <td>{formatCurrency(account.goal3)}</td>
-                  <td>{formatCurrency(account.goal4)}</td>
-                  <td>{formatCurrency(account.goal5)}</td>
+                  <td className="goal-col">{formatCurrency(account.goal1)}</td>
+                  <td className="goal-col">{formatCurrency(account.goal3)}</td>
+                  <td className="goal-col goal-col-hidden-mobile">{formatCurrency(account.goal5)}</td>
                   <td className="account-actions">
                     <button 
                       className="edit-btn"

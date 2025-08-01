@@ -16,7 +16,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('Original'); // Default to Original
+  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => {
+    // Load saved currency from localStorage, default to 'Original' if not found
+    return localStorage.getItem('dashboardCurrency') || 'Original';
+  });
   const [exchangeRates, setExchangeRates] = useState<{[key: string]: number}>({});
   const [convertedData, setConvertedData] = useState<any>(null);
 
@@ -131,7 +134,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
   const handleCurrencyChange = (currency: string) => {
     setSelectedCurrency(currency);
-    console.log(`Currency changed to: ${currency}`);
+    // Save selected currency to localStorage
+    localStorage.setItem('dashboardCurrency', currency);
+    console.log(`Currency changed to: ${currency} (saved to localStorage)`);
   };
 
   const getConvertedValue = (value: number, originalCurrency: string): number => {
@@ -575,22 +580,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
               </PieChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Portfolio Growth Timeline */}
+          <div className="chart-item timeline-chart-item">
+            {dashboardData.timelineData ? (
+              <InvestmentTimeline 
+                timelineData={getConvertedTimelineData(dashboardData.timelineData)} 
+                displayCurrency={selectedCurrency !== 'Original' ? selectedCurrency : undefined}
+              />
+            ) : (
+              <div className="timeline-loading">Loading timeline data...</div>
+            )}
+          </div>
         </div>
       </section>
-
-      {/* Investment Timeline - moved to bottom */}
-      {dashboardData.timelineData ? (
-        <section className="timeline-section">
-          <InvestmentTimeline 
-            timelineData={getConvertedTimelineData(dashboardData.timelineData)} 
-            displayCurrency={selectedCurrency !== 'Original' ? selectedCurrency : undefined}
-          />
-        </section>
-      ) : (
-        <section className="timeline-section">
-          <div className="timeline-loading">Loading timeline data...</div>
-        </section>
-      )}
     </div>
   );
 };
