@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import './App.css'
 import Dashboard from './components/Dashboard'
 import InvestmentForm from './components/InvestmentForm'
@@ -8,33 +8,10 @@ import Login from './components/Login'
 import Logo from './components/Logo'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
-type AppView = 'dashboard' | 'form' | 'account' | 'accounts'
-
-const AppContent = () => {
-  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
-  const [activeView, setActiveView] = useState<AppView>('dashboard')
-  const [selectedAccount, setSelectedAccount] = useState<string>('')
-  const [refreshDashboard, setRefreshDashboard] = useState(0)
-
-  const handleInvestmentCreated = () => {
-    setRefreshDashboard(prev => prev + 1)
-    setActiveView('dashboard')
-  }
-
-  const handleNavigateToAccount = (account: string) => {
-    setSelectedAccount(account)
-    setActiveView('account')
-  }
-
-  const handleBackToDashboard = () => {
-    setActiveView('dashboard')
-    setSelectedAccount('')
-  }
-
-  const handleLogout = () => {
-    logout();
-  }
-
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
   if (isLoading) {
     return (
       <div className="app-loading">
@@ -43,10 +20,24 @@ const AppContent = () => {
       </div>
     );
   }
-
+  
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={login} />;
+    return <Login onLoginSuccess={() => {}} />;
   }
+  
+  return <>{children}</>;
+};
+
+// Layout Component with Navigation
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  
+  const handleLogout = () => {
+    logout();
+  };
+
+  const isAccountDetailPage = location.pathname.startsWith('/account/');
 
   return (
     <div className="app">
@@ -57,26 +48,26 @@ const AppContent = () => {
         </div>
         
         <div className="header-right">
-          {activeView !== 'account' && (
+          {!isAccountDetailPage && (
             <nav>
-              <button 
-                className={activeView === 'dashboard' ? 'active' : ''}
-                onClick={() => setActiveView('dashboard')}
+              <Link 
+                to="/dashboard" 
+                className={location.pathname === '/dashboard' ? 'active' : ''}
               >
                 Dashboard
-              </button>
-              <button 
-                className={activeView === 'accounts' ? 'active' : ''}
-                onClick={() => setActiveView('accounts')}
+              </Link>
+              <Link 
+                to="/accounts" 
+                className={location.pathname === '/accounts' ? 'active' : ''}
               >
                 Accounts
-              </button>
-              <button 
-                className={activeView === 'form' ? 'active' : ''}
-                onClick={() => setActiveView('form')}
+              </Link>
+              <Link 
+                to="/add-investment" 
+                className={location.pathname === '/add-investment' ? 'active' : ''}
               >
                 Add Investment
-              </button>
+              </Link>
             </nav>
           )}
           
@@ -90,33 +81,99 @@ const AppContent = () => {
       </header>
 
       <main className="app-main">
-        {activeView === 'dashboard' && (
-          <Dashboard 
-            key={refreshDashboard} 
-            onNavigateToAccount={handleNavigateToAccount}
-          />
-        )}
-        {activeView === 'accounts' && (
-          <AccountList />
-        )}
-        {activeView === 'form' && (
-          <InvestmentForm onSuccess={handleInvestmentCreated} />
-        )}
-        {activeView === 'account' && (
-          <AccountInvestments 
-            account={selectedAccount}
-            onBack={handleBackToDashboard}
-          />
-        )}
+        {children}
       </main>
     </div>
+  );
+};
+
+// Dashboard Page Component
+const DashboardPage = () => {
+  const navigate = useNavigate();
+  
+  const handleNavigateToAccount = (accountName: string) => {
+    navigate(`/account/${encodeURIComponent(accountName)}`);
+  };
+
+  return <Dashboard onNavigateToAccount={handleNavigateToAccount} />;
+};
+
+// Add Investment Page Component
+const AddInvestmentPage = () => {
+  const navigate = useNavigate();
+  
+  const handleSuccess = () => {
+    navigate('/dashboard');
+  };
+
+  return <InvestmentForm onSuccess={handleSuccess} />;
+};
+
+// Account Detail Page Component
+const AccountDetailPage = () => {
+  const { accountName } = useParams();
+  const navigate = useNavigate();
+  
+  const handleBack = () => {
+    navigate('/dashboard');
+  };
+
+  if (!accountName) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return (
+    <AccountInvestments 
+      account={decodeURIComponent(accountName)}
+      onBack={handleBack}
+    />
+  );
+};
+
+// Main App Content Component
+const AppContent = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <DashboardPage />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/accounts" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AccountList />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/add-investment" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AddInvestmentPage />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/account/:accountName" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AccountDetailPage />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 };
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <Router>
+        <AppContent />
+      </Router>
     </AuthProvider>
   );
 }

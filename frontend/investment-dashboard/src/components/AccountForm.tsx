@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { CreateAccountRequest } from '../types/Account';
 import { accountApi } from '../services/accountApi';
+import { useModal } from '../hooks/useModal';
 
 interface AccountFormProps {
   onSuccess: () => void;
@@ -19,6 +20,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onSuccess, onCancel }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useModal(true, onCancel);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +55,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onSuccess, onCancel }) => {
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" ref={modalRef}>
       <div className="account-form modal-content">
         <h2>Create New Account</h2>
         {error && <div className="error-message">{error}</div>}

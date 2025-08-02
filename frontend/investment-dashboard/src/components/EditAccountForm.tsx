@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Account } from '../types/Account';
 import { accountApi } from '../services/accountApi';
+import { useModal } from '../hooks/useModal';
 
 interface EditAccountFormProps {
   account: Account;
@@ -14,6 +15,7 @@ const EditAccountForm: React.FC<EditAccountFormProps> = ({ account, onSuccess, o
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useModal(true, onCancel);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +50,7 @@ const EditAccountForm: React.FC<EditAccountFormProps> = ({ account, onSuccess, o
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" ref={modalRef}>
       <div className="account-form modal-content">
         <h2>Edit Account</h2>
         {error && <div className="error-message">{error}</div>}

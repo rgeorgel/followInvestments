@@ -4,6 +4,7 @@ import type { Account } from '../types/Account';
 import { Currency as CurrencyEnum, Category as CategoryEnum } from '../types/Investment';
 import { investmentApi } from '../services/api';
 import { accountApi } from '../services/accountApi';
+import { useModal } from '../hooks/useModal';
 
 interface EditInvestmentFormProps {
   investment: Investment;
@@ -50,6 +51,7 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useModal(true, onCancel);
 
   useEffect(() => {
     fetchAccounts();
@@ -115,7 +117,7 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" ref={modalRef}>
       <div className="investment-form modal-content">
         <h2>Edit Investment</h2>
         {error && <div className="error-message">{error}</div>}
