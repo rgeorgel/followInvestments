@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import type { DashboardData } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
+import { currencyApi } from '../services/currencyApi';
 import InvestmentTimeline from './InvestmentTimeline';
 import CurrencySelector from './CurrencySelector';
 
@@ -20,6 +21,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     // Load saved currency from localStorage, default to 'Original' if not found
     return localStorage.getItem('dashboardCurrency') || 'Original';
   });
+  const [currencyRates, setCurrencyRates] = useState<{[key: string]: number}>({});
 
   const getProgressColor = (progress: number) => {
     if (progress >= 100) return '#27ae60'; // Green - Goal reached
@@ -30,7 +32,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
   useEffect(() => {
     fetchDashboardData();
+    loadCurrencyRates();
   }, []);
+
+  const loadCurrencyRates = async () => {
+    try {
+      // Refresh currency rates in background
+      currencyApi.refreshRates().catch(console.warn);
+      
+      // Get current rates
+      const rates = await currencyApi.getAllRates();
+      setCurrencyRates(rates);
+    } catch (error) {
+      console.warn('Failed to load currency rates:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -127,23 +143,89 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
-    if (fromCurrency === toCurrency) {
-      return amount;
+    return currencyApi.convertCurrencySync(amount, fromCurrency, toCurrency);
+  };
+
+  const getCurrencyRateDisplay = () => {
+    if (!currencyRates || Object.keys(currencyRates).length === 0) {
+      return null;
     }
 
-    // Simple conversion using mock rates (since Yahoo Finance is rate-limited)
-    // In a real implementation, these would come from the exchange rates API
-    const mockRates: {[key: string]: {[key: string]: number}} = {
-      'BRL': { 'USD': 0.18, 'CAD': 0.25 },
-      'CAD': { 'USD': 0.73, 'BRL': 4.0 },
-      'USD': { 'CAD': 1.37, 'BRL': 5.5 }
-    };
-
-    if (mockRates[fromCurrency] && mockRates[fromCurrency][toCurrency]) {
-      return amount * mockRates[fromCurrency][toCurrency];
+    if (selectedCurrency === 'Original') {
+      // For Original mode, show comprehensive cross rates with USD context
+      const cadToBrl = currencyRates['CADBRL'];
+      const cadToUsd = currencyRates['CADUSD'];
+      const brlToUsd = currencyRates['BRLUSD'];
+      
+      if (cadToBrl && cadToUsd && brlToUsd) {
+        return `1 CAD = ${cadToBrl.toFixed(3)} BRL = ${cadToUsd.toFixed(3)} USD`;
+      } else if (cadToBrl && cadToUsd) {
+        return `1 CAD = ${cadToBrl.toFixed(3)} BRL = ${cadToUsd.toFixed(3)} USD`;
+      } else if (cadToBrl) {
+        return `1 CAD = ${cadToBrl.toFixed(3)} BRL`;
+      }
+      
+      // Fallback with reverse rates
+      const brlToCad = currencyRates['BRLCAD'];
+      if (brlToCad && brlToUsd) {
+        const cadToUsdCalc = brlToUsd / brlToCad; // Calculate CAD to USD via BRL
+        return `1 BRL = ${brlToCad.toFixed(3)} CAD | 1 CAD ≈ ${(1/brlToCad).toFixed(3)} BRL = ${cadToUsdCalc.toFixed(3)} USD`;
+      } else if (brlToCad) {
+        return `1 BRL = ${brlToCad.toFixed(3)} CAD`;
+      }
+      
+      return '1 CAD ≈ 4.0 BRL ≈ 0.73 USD'; // Fallback
+    } else {
+      // For converted mode, show the rate to the selected currency
+      // Determine the primary base currency from portfolio
+      const hasBrl = dashboardData?.accountGoals?.some(account => account.currency === 'BRL');
+      const hasCad = dashboardData?.accountGoals?.some(account => account.currency === 'CAD');
+      
+      let fromCurrency = 'CAD'; // Default
+      if (hasBrl && !hasCad) {
+        fromCurrency = 'BRL';
+      } else if (hasBrl && hasCad) {
+        // Show both major rates, but avoid showing 1:1 conversions
+        const brlRate = currencyRates[`BRL${selectedCurrency}`] || (1 / (currencyRates[`${selectedCurrency}BRL`] || 1));
+        const cadRate = currencyRates[`CAD${selectedCurrency}`] || (1 / (currencyRates[`${selectedCurrency}CAD`] || 1));
+        
+        if (selectedCurrency === 'BRL') {
+          // When BRL is selected, show CAD to BRL and BRL to USD
+          const brlToUsd = currencyRates['BRLUSD'] || (1 / (currencyRates['USDBRL'] || 1));
+          if (cadRate && brlToUsd) {
+            return `1 CAD = ${cadRate.toFixed(3)} BRL | 1 BRL = ${brlToUsd.toFixed(3)} USD`;
+          }
+        } else if (selectedCurrency === 'CAD') {
+          // When CAD is selected, show BRL to CAD and CAD to USD  
+          const cadToUsd = currencyRates['CADUSD'] || (1 / (currencyRates['USDCAD'] || 1));
+          if (brlRate && cadToUsd) {
+            return `1 BRL = ${brlRate.toFixed(3)} CAD | 1 CAD = ${cadToUsd.toFixed(3)} USD`;
+          }
+        } else {
+          // For other currencies, show both rates normally
+          if (brlRate && cadRate) {
+            return `1 BRL = ${brlRate.toFixed(3)} ${selectedCurrency} | 1 CAD = ${cadRate.toFixed(3)} ${selectedCurrency}`;
+          }
+        }
+      }
+      
+      // Show single rate, but avoid 1:1 conversions by showing USD rate instead
+      if (fromCurrency === selectedCurrency) {
+        // When converting to same currency, show USD rate instead
+        const toUsdRate = currencyRates[`${fromCurrency}USD`] || (1 / (currencyRates[`USD${fromCurrency}`] || 1));
+        if (toUsdRate && toUsdRate !== 1) {
+          return `1 ${fromCurrency} = ${toUsdRate.toFixed(3)} USD`;
+        }
+      } else {
+        const rate = currencyRates[`${fromCurrency}${selectedCurrency}`] || (1 / (currencyRates[`${selectedCurrency}${fromCurrency}`] || 1));
+        
+        if (rate && rate !== 1) {
+          return `1 ${fromCurrency} = ${rate.toFixed(3)} ${selectedCurrency}`;
+        }
+      }
     }
-
-    return amount; // Fallback to original amount
+    
+    return null;
   };
 
   const formatPerformance = (gainLoss: number, percentage: number, currency: string) => {
@@ -341,14 +423,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
         <div className="dashboard-title-section">
           <h2>Investment Dashboard</h2>
           <div className="portfolio-total">
-            <span className="total-label">Total Portfolio:</span>
-            <span className="total-value">{portfolioTotal.display}</span>
+            <div className="portfolio-total-main">
+              <span className="total-label">Total Portfolio:</span>
+              <span className="total-value">{portfolioTotal.display}</span>
+            </div>
           </div>
         </div>
-        <CurrencySelector
-          selectedCurrency={selectedCurrency}
-          onCurrencyChange={handleCurrencyChange}
-        />
+        <div className="currency-selector-section">
+          <CurrencySelector
+            selectedCurrency={selectedCurrency}
+            onCurrencyChange={handleCurrencyChange}
+          />
+          {getCurrencyRateDisplay() && (
+            <div className="currency-rate-display">
+              <span className="rate-label">Rate:</span>
+              <span className="rate-value">{getCurrencyRateDisplay()}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Enhanced Summary per Account with Goal Progress */}

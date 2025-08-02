@@ -67,6 +67,12 @@ public class AuthenticationMiddleware
         {
             "/api/auth/login",
             "/api/auth/register",
+            "/api/currency/rates",
+            "/api/currency/rate/",
+            "/api/currency/convert",
+            "/api/currency/update-rates",
+            "/api/currency/seed-test-rates",
+            "/api/currency/status",
             "/health",
             "/swagger",
             "/swagger/index.html",

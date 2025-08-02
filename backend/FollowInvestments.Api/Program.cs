@@ -69,6 +69,9 @@ builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
 // Add Password service
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 
+// Add Background Service for automatic currency updates
+builder.Services.AddHostedService<CurrencyUpdateBackgroundService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {

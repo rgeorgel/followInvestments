@@ -258,6 +258,39 @@
   letter-spacing: -0.5px;
 }
 
+.currency-selector-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.currency-rate-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  font-size: 0.8rem;
+}
+
+.rate-label {
+  font-size: 0.75rem;
+  color: #667eea;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rate-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4a5568;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
 .investments-list {
   margin-bottom: 3rem;
 }
@@ -1362,6 +1395,18 @@
   
   .total-value {
     font-size: 1.1rem;
+  }
+  
+  .currency-selector-section {
+    align-items: center;
+  }
+  
+  .currency-rate-display {
+    margin-top: 0.5rem;
+  }
+  
+  .rate-value {
+    font-size: 0.75rem;
   }
   
   .account-list-header {

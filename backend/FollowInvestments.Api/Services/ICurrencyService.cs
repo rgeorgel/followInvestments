@@ -6,4 +6,5 @@ public interface ICurrencyService
     Task UpdateAllExchangeRatesAsync();
     Task<decimal> ConvertCurrencyAsync(decimal amount, string fromCurrency, string toCurrency);
     Task<Dictionary<string, decimal>> GetAllCurrentRatesAsync();
+    Task<DateTime?> GetLastUpdateTimeAsync();
 }

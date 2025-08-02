@@ -33,14 +33,16 @@ public class CurrencyService : ICurrencyService
         var cachedRate = await _context.ExchangeRates
             .FirstOrDefaultAsync(er => er.FromCurrency == fromCurrency && er.ToCurrency == toCurrency);
 
-        // If cached rate is recent (less than 1 hour old), use it
-        if (cachedRate != null && cachedRate.LastUpdated > DateTime.UtcNow.AddDays(-1))
+        // If cached rate is recent (less than 24 hours old), use it
+        if (cachedRate != null && cachedRate.LastUpdated > DateTime.UtcNow.AddHours(-24))
         {
+            _logger.LogDebug("Using cached rate for {FromCurrency} to {ToCurrency}: {Rate} (cached at {CachedTime})", 
+                fromCurrency, toCurrency, cachedRate.Rate, cachedRate.LastUpdated);
             return cachedRate.Rate;
         }
 
-        // Fetch from Yahoo Finance
-        var rate = await FetchRateFromYahooAsync(fromCurrency, toCurrency);
+        // Fetch from external APIs (ExchangeRate-API first, Yahoo Finance as fallback)
+        var rate = await FetchRateFromExternalApiAsync(fromCurrency, toCurrency);
         if (rate.HasValue)
         {
             await SaveOrUpdateRateAsync(fromCurrency, toCurrency, rate.Value);
@@ -58,7 +60,7 @@ public class CurrencyService : ICurrencyService
             var currencies = ParseCurrencyPair(pair);
             if (currencies.HasValue)
             {
-                var rate = await FetchRateFromYahooAsync(currencies.Value.From, currencies.Value.To);
+                var rate = await FetchRateFromExternalApiAsync(currencies.Value.From, currencies.Value.To);
                 if (rate.HasValue)
                 {
                     await SaveOrUpdateRateAsync(currencies.Value.From, currencies.Value.To, rate.Value);
@@ -91,14 +93,32 @@ public class CurrencyService : ICurrencyService
         return rates;
     }
 
-    private async Task<decimal?> FetchRateFromYahooAsync(string fromCurrency, string toCurrency)
+    public async Task<DateTime?> GetLastUpdateTimeAsync()
     {
+        var lastUpdate = await _context.ExchangeRates
+            .OrderByDescending(er => er.LastUpdated)
+            .Select(er => er.LastUpdated)
+            .FirstOrDefaultAsync();
+
+        return lastUpdate == default ? null : lastUpdate;
+    }
+
+    private async Task<decimal?> FetchRateFromExternalApiAsync(string fromCurrency, string toCurrency)
+    {
+        // Try ExchangeRate-API first (more reliable)
+        var rate = await FetchRateFromExchangeRateApiAsync(fromCurrency, toCurrency);
+        if (rate.HasValue)
+        {
+            return rate;
+        }
+
+        // Fallback to Yahoo Finance
         try
         {
             var currencyPair = $"{fromCurrency}{toCurrency}=X";
             var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{currencyPair}?interval=1d&range=1d";
 
-            _logger.LogInformation($"Fetching exchange rate for {currencyPair} from Yahoo Finance");
+            _logger.LogInformation($"Fetching exchange rate for {currencyPair} from Yahoo Finance (fallback)");
 
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
@@ -113,11 +133,11 @@ public class CurrencyService : ICurrencyService
                 PropertyNameCaseInsensitive = true
             });
 
-            var rate = yahooResponse?.Chart?.Result?.FirstOrDefault()?.Meta?.RegularMarketPrice;
-            if (rate.HasValue)
+            var yahooRate = yahooResponse?.Chart?.Result?.FirstOrDefault()?.Meta?.RegularMarketPrice;
+            if (yahooRate.HasValue)
             {
-                _logger.LogInformation($"Fetched rate for {currencyPair}: {rate.Value}");
-                return rate.Value;
+                _logger.LogInformation($"Fetched rate for {currencyPair}: {yahooRate.Value}");
+                return yahooRate.Value;
             }
 
             _logger.LogWarning($"No rate found in Yahoo Finance response for {currencyPair}");
@@ -126,6 +146,43 @@ public class CurrencyService : ICurrencyService
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error fetching exchange rate for {fromCurrency} to {toCurrency}");
+            return null;
+        }
+    }
+
+    private async Task<decimal?> FetchRateFromExchangeRateApiAsync(string fromCurrency, string toCurrency)
+    {
+        try
+        {
+            var url = $"https://api.exchangerate-api.com/v4/latest/{fromCurrency}";
+            
+            _logger.LogInformation($"Fetching exchange rate for {fromCurrency} to {toCurrency} from ExchangeRate-API");
+
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning($"ExchangeRate-API returned {response.StatusCode} for {fromCurrency}");
+                return null;
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var exchangeRateResponse = JsonSerializer.Deserialize<ExchangeRateApiResponse>(jsonContent, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (exchangeRateResponse?.Rates?.TryGetValue(toCurrency, out var rate) == true)
+            {
+                _logger.LogInformation($"Fetched rate from ExchangeRate-API {fromCurrency} to {toCurrency}: {rate}");
+                return rate;
+            }
+
+            _logger.LogWarning($"Currency {toCurrency} not found in ExchangeRate-API response for base {fromCurrency}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error fetching exchange rate from ExchangeRate-API for {fromCurrency} to {toCurrency}");
             return null;
         }
     }
@@ -188,4 +245,12 @@ public class YahooCurrencyMeta
     public string? Symbol { get; set; }
     public decimal? RegularMarketPrice { get; set; }
     public decimal? PreviousClose { get; set; }
+}
+
+// ExchangeRate-API response models
+public class ExchangeRateApiResponse
+{
+    public string? Base { get; set; }
+    public string? Date { get; set; }
+    public Dictionary<string, decimal>? Rates { get; set; }
 }

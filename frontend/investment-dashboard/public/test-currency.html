@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency API Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d8000c; }
+        .success { background: #e6ffe6; color: #4f8a10; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        input { padding: 5px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>Currency API Endpoint Tester</h1>
+    
+    <div class="test-section">
+        <h3>1. Initialize Test Data</h3>
+        <button onclick="seedTestRates()">Seed Test Rates</button>
+        <div id="seed-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Get All Exchange Rates</h3>
+        <button onclick="getAllRates()">Get All Rates</button>
+        <div id="rates-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Get Specific Exchange Rate</h3>
+        <input type="text" id="from-currency" placeholder="From (e.g., BRL)" value="BRL">
+        <input type="text" id="to-currency" placeholder="To (e.g., CAD)" value="CAD">
+        <button onclick="getSpecificRate()">Get Rate</button>
+        <div id="specific-rate-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Convert Currency</h3>
+        <input type="number" id="amount" placeholder="Amount" value="1000">
+        <input type="text" id="convert-from" placeholder="From Currency" value="BRL">
+        <input type="text" id="convert-to" placeholder="To Currency" value="CAD">
+        <button onclick="convertCurrency()">Convert</button>
+        <div id="convert-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Test Your Investment Example</h3>
+        <p>Brazil: $46,016.64 BRL → CAD</p>
+        <button onclick="testInvestmentExample()">Convert Brazil Investment</button>
+        <div id="investment-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:9900/api/currency';
+
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                const text = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return text;
+                }
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function seedTestRates() {
+            const resultDiv = document.getElementById('seed-result');
+            try {
+                const result = await makeRequest(`${API_BASE}/seed-test-rates`, { method: 'POST' });
+                resultDiv.className = 'result success';
+                resultDiv.textContent = result;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function getAllRates() {
+            const resultDiv = document.getElementById('rates-result');
+            try {
+                const rates = await makeRequest(`${API_BASE}/rates`);
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(rates, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function getSpecificRate() {
+            const resultDiv = document.getElementById('specific-rate-result');
+            const fromCurrency = document.getElementById('from-currency').value;
+            const toCurrency = document.getElementById('to-currency').value;
+            
+            try {
+                const rate = await makeRequest(`${API_BASE}/rate/${fromCurrency}/${toCurrency}`);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `1 ${fromCurrency} = ${rate} ${toCurrency}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function convertCurrency() {
+            const resultDiv = document.getElementById('convert-result');
+            const amount = parseFloat(document.getElementById('amount').value);
+            const fromCurrency = document.getElementById('convert-from').value;
+            const toCurrency = document.getElementById('convert-to').value;
+            
+            try {
+                const result = await makeRequest(`${API_BASE}/convert`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount, fromCurrency, toCurrency })
+                });
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `${amount} ${fromCurrency} = ${result} ${toCurrency}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testInvestmentExample() {
+            const resultDiv = document.getElementById('investment-result');
+            try {
+                const result = await makeRequest(`${API_BASE}/convert`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: 46016.64, fromCurrency: 'BRL', toCurrency: 'CAD' })
+                });
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <strong>Brazil Investment Conversion:</strong><br>
+                    R$ 46,016.64 BRL = CA$ ${parseFloat(result).toFixed(2)} CAD<br>
+                    <em>This should show approximately CA$ 11,504.16</em>
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Auto-load rates on page load
+        window.onload = function() {
+            seedTestRates().then(() => {
+                setTimeout(getAllRates, 500);
+            });
+        };
+    </script>
+</body>
+</html>
