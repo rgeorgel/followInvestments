@@ -52,28 +52,60 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
   // Convert timeline data based on selected currency
   const getConvertedTimelineData = (timelineData: any) => {
-    if (!timelineData || selectedCurrency === 'Original') {
+    if (!timelineData) {
       return timelineData;
     }
 
-    return {
-      ...timelineData,
-      timelinePoints: timelineData.timelinePoints.map((point: any) => ({
-        ...point,
-        totalValue: getConvertedValue(point.brlValue, 'BRL') + getConvertedValue(point.cadValue, 'CAD'),
-        brlValue: getConvertedValue(point.brlValue, 'BRL'),
-        cadValue: getConvertedValue(point.cadValue, 'CAD')
-      })),
-      goalMarkers: timelineData.goalMarkers.map((goal: any) => ({
-        ...goal,
-        value: getConvertedValue(goal.value, goal.currency),
-        currency: selectedCurrency,
-        label: goal.label.replace(goal.currency, selectedCurrency)
-      })),
-      currentTotalValue: getConvertedValue(timelineData.currentBrlValue, 'BRL') + getConvertedValue(timelineData.currentCadValue, 'CAD'),
-      currentBrlValue: getConvertedValue(timelineData.currentBrlValue, 'BRL'),
-      currentCadValue: getConvertedValue(timelineData.currentCadValue, 'CAD')
-    };
+    if (selectedCurrency === 'Original') {
+      // For Original mode, convert to base currency (CAD) for proportional accuracy
+      // but maintain original currency display in tooltips
+      return {
+        ...timelineData,
+        timelinePoints: timelineData.timelinePoints.map((point: any) => ({
+          ...point,
+          totalValue: convertCurrency(point.brlValue, 'BRL', 'CAD') + convertCurrency(point.cadValue, 'CAD', 'CAD'),
+          brlValue: convertCurrency(point.brlValue, 'BRL', 'CAD'),
+          cadValue: convertCurrency(point.cadValue, 'CAD', 'CAD'),
+          // Keep original values for display
+          originalBrlValue: point.brlValue,
+          originalCadValue: point.cadValue,
+          displayMode: 'original'
+        })),
+        goalMarkers: timelineData.goalMarkers.map((goal: any) => ({
+          ...goal,
+          value: convertCurrency(goal.value, goal.currency, 'CAD'),
+          originalValue: goal.value,
+          originalCurrency: goal.currency,
+          displayMode: 'original'
+        })),
+        currentTotalValue: convertCurrency(timelineData.currentBrlValue, 'BRL', 'CAD') + convertCurrency(timelineData.currentCadValue, 'CAD', 'CAD'),
+        currentBrlValue: convertCurrency(timelineData.currentBrlValue, 'BRL', 'CAD'),
+        currentCadValue: convertCurrency(timelineData.currentCadValue, 'CAD', 'CAD'),
+        originalCurrentBrlValue: timelineData.currentBrlValue,
+        originalCurrentCadValue: timelineData.currentCadValue,
+        displayMode: 'original'
+      };
+    } else {
+      // For converted mode, convert to selected currency
+      return {
+        ...timelineData,
+        timelinePoints: timelineData.timelinePoints.map((point: any) => ({
+          ...point,
+          totalValue: getConvertedValue(point.brlValue, 'BRL') + getConvertedValue(point.cadValue, 'CAD'),
+          brlValue: getConvertedValue(point.brlValue, 'BRL'),
+          cadValue: getConvertedValue(point.cadValue, 'CAD')
+        })),
+        goalMarkers: timelineData.goalMarkers.map((goal: any) => ({
+          ...goal,
+          value: getConvertedValue(goal.value, goal.currency),
+          currency: selectedCurrency,
+          label: goal.label.replace(goal.currency, selectedCurrency)
+        })),
+        currentTotalValue: getConvertedValue(timelineData.currentBrlValue, 'BRL') + getConvertedValue(timelineData.currentCadValue, 'CAD'),
+        currentBrlValue: getConvertedValue(timelineData.currentBrlValue, 'BRL'),
+        currentCadValue: getConvertedValue(timelineData.currentCadValue, 'CAD')
+      };
+    }
   };
 
   const formatCurrency = (value: number, originalCurrency: string) => {
@@ -95,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
-    if (fromCurrency === toCurrency || selectedCurrency === 'Original') {
+    if (fromCurrency === toCurrency) {
       return amount;
     }
 
@@ -190,70 +222,114 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   // Helper functions for chart data conversion
-  const convertChartData = (data: any[]) => {
-    if (selectedCurrency === 'Original') {
-      return data; // No conversion needed
-    }
+  const convertAccountChartData = (data: any[]) => {
+    const convertedData = data.map((item: any) => {
+      // Always recalculate from individual investments for accurate proportions
+      const accountInvestments = dashboardData?.allInvestments?.filter(
+        (inv: any) => inv.account.name === item.account
+      ) || [];
 
-    return data.map((item: any) => {
-      // For account-based data, convert based on account's primary currency
-      if (item.account) {
-        const accountData = dashboardData?.accountGoals?.find((goal: any) => goal.accountName === item.account);
-        const accountCurrency = accountData?.currency || 'CAD';
+      if (selectedCurrency === 'Original') {
+        // For Original mode, calculate proportional value using a base currency (CAD)
+        // This ensures correct proportions while preserving display in original currencies
+        const proportionalTotal = accountInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + convertCurrency(invValue, inv.currency, 'CAD');
+        }, 0);
+
         return {
           ...item,
-          total: getConvertedValue(item.total, accountCurrency)
+          total: proportionalTotal,
+          originalTotal: item.total, // Keep original for display
+          displayMode: 'original'
+        };
+      } else {
+        // For converted mode, convert to selected currency
+        const convertedTotal = accountInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + getConvertedValue(invValue, inv.currency);
+        }, 0);
+
+        return {
+          ...item,
+          total: convertedTotal
         };
       }
-
-      // For other data, handle differently based on context
-      return {
-        ...item,
-        total: item.total // Will be handled per chart type
-      };
     });
+
+    // Sort by total amount (highest to lowest) using converted values
+    return convertedData.sort((a, b) => b.total - a.total);
   };
 
   const convertCountryData = (data: any[]) => {
-    if (selectedCurrency === 'Original') {
-      return data;
-    }
-
     return data.map((item: any) => {
-      // Convert based on country's primary currency
-      const countryCurrency = item.country === 'Brazil' ? 'BRL' : 'CAD';
-      return {
-        ...item,
-        total: getConvertedValue(item.total, countryCurrency)
-      };
+      // Always recalculate from individual investments for accurate proportions
+      const countryInvestments = dashboardData?.allInvestments?.filter(
+        (inv: any) => inv.country === item.country
+      ) || [];
+
+      if (selectedCurrency === 'Original') {
+        // For Original mode, calculate proportional value using a base currency (CAD)
+        const proportionalTotal = countryInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + convertCurrency(invValue, inv.currency, 'CAD');
+        }, 0);
+
+        return {
+          ...item,
+          total: proportionalTotal,
+          originalTotal: item.total,
+          displayMode: 'original'
+        };
+      } else {
+        // For converted mode, convert to selected currency
+        const convertedTotal = countryInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + getConvertedValue(invValue, inv.currency);
+        }, 0);
+
+        return {
+          ...item,
+          total: convertedTotal
+        };
+      }
     });
   };
 
   const convertCategoryData = (data: any[]) => {
-    if (selectedCurrency === 'Original') {
-      return data;
-    }
-
-    // For category data, we need to convert each category's total
-    // This is more complex as categories span multiple currencies
     return data.map((item: any) => {
       // Get all investments in this category
       const categoryInvestments = dashboardData?.allInvestments.filter(
         (inv: any) => inv.category === item.category
       ) || [];
 
-      // Convert each investment's value and sum them
-      const convertedTotal = categoryInvestments.reduce((sum: number, inv: any) => {
-        const invValue = inv.total || (inv.value * inv.quantity);
-        return sum + getConvertedValue(invValue, inv.currency);
-      }, 0);
+      if (selectedCurrency === 'Original') {
+        // For Original mode, calculate proportional value using a base currency (CAD)
+        const proportionalTotal = categoryInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + convertCurrency(invValue, inv.currency, 'CAD');
+        }, 0);
 
-      return {
-        ...item,
-        total: convertedTotal,
-        // Recalculate percentage based on new totals
-        percentage: 0 // Will be recalculated below
-      };
+        return {
+          ...item,
+          total: proportionalTotal,
+          originalTotal: item.total,
+          displayMode: 'original',
+          percentage: 0 // Will be recalculated
+        };
+      } else {
+        // For converted mode, convert to selected currency
+        const convertedTotal = categoryInvestments.reduce((sum: number, inv: any) => {
+          const invValue = inv.total || (inv.value * inv.quantity);
+          return sum + getConvertedValue(invValue, inv.currency);
+        }, 0);
+
+        return {
+          ...item,
+          total: convertedTotal,
+          percentage: 0 // Will be recalculated
+        };
+      }
     });
   };
 
@@ -466,54 +542,57 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
           {/* Assets by Account */}
           <div className="chart-item">
             <h3>Assets by Account {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={convertChartData(dashboardData.assetsByAccount)}>
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={convertAccountChartData(dashboardData.assetsByAccount)} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="account" />
-                <YAxis />
-                <Tooltip formatter={(value) => [
-                  selectedCurrency !== 'Original' 
-                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
-                    : `$${value}`, 
-                  'Total'
-                ]} />
-                <Legend />
-                <Bar dataKey="total" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Assets by Country */}
-          <div className="chart-item">
-            <h3>Assets by Country {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={convertCountryData(dashboardData.assetsByCountry)}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ country, total }) => 
-                    `${country}: ${selectedCurrency !== 'Original' 
-                      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(total)
-                      : `$${total}`
-                    }`
+                <XAxis 
+                  dataKey="account" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                  fontSize={12}
+                  stroke="#666"
+                />
+                <YAxis stroke="#666" fontSize={12} />
+                <Tooltip formatter={(value, _name, props: any) => {
+                  if (selectedCurrency === 'Original' && props.payload?.displayMode === 'original') {
+                    // Show original currency values for each account
+                    const accountInvestments = dashboardData?.allInvestments?.filter(
+                      (inv: any) => inv.account.name === props.payload.account
+                    ) || [];
+                    
+                    const brlTotal = accountInvestments
+                      .filter(inv => inv.currency === 'BRL')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    const cadTotal = accountInvestments
+                      .filter(inv => inv.currency === 'CAD')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    const usdTotal = accountInvestments
+                      .filter(inv => inv.currency === 'USD')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    
+                    const parts = [];
+                    if (brlTotal > 0) parts.push(formatCurrency(brlTotal, 'BRL'));
+                    if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
+                    if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
+                    
+                    return [parts.join(' + '), 'Total'];
+                  } else {
+                    return [
+                      selectedCurrency !== 'Original' 
+                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                        : `$${value}`, 
+                      'Total'
+                    ];
                   }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="total"
-                >
-                  {dashboardData.assetsByCountry.map((_, index) => (
+                }} />
+                <Bar dataKey="total">
+                  {convertAccountChartData(dashboardData.assetsByAccount).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
-                </Pie>
-                <Tooltip formatter={(value) => [
-                  selectedCurrency !== 'Original' 
-                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
-                    : `$${value}`, 
-                  'Total'
-                ]} />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
@@ -548,17 +627,130 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value, _name, props: any) => [
-                    `${selectedCurrency !== 'Original' 
-                      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
-                      : `$${value}`
-                    } (${props.payload.percentage}%)`,
-                    `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
-                  ]}
+                  formatter={(value, _name, props: any) => {
+                    if (selectedCurrency === 'Original' && props.payload?.displayMode === 'original') {
+                      // Show original currency breakdown for each category
+                      const categoryInvestments = dashboardData?.allInvestments?.filter(
+                        (inv: any) => inv.category === props.payload.category
+                      ) || [];
+                      
+                      const brlTotal = categoryInvestments
+                        .filter(inv => inv.currency === 'BRL')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      const cadTotal = categoryInvestments
+                        .filter(inv => inv.currency === 'CAD')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      const usdTotal = categoryInvestments
+                        .filter(inv => inv.currency === 'USD')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      
+                      const parts = [];
+                      if (brlTotal > 0) parts.push(formatCurrency(brlTotal, 'BRL'));
+                      if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
+                      if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
+                      
+                      return [
+                        `${parts.join(' + ')} (${props.payload.percentage}%)`,
+                        `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
+                      ];
+                    } else {
+                      return [
+                        `${selectedCurrency !== 'Original' 
+                          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                          : `$${value}`
+                        } (${props.payload.percentage}%)`,
+                        `${getCategoryLabel(props.payload.category)} - ${props.payload.count} investments`
+                      ];
+                    }
+                  }}
                 />
                 <Legend
                   formatter={(_value, entry: any) => getCategoryLabel(entry.payload.category)}
                 />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Assets by Country */}
+          <div className="chart-item">
+            <h3>Assets by Country {selectedCurrency !== 'Original' ? `(${selectedCurrency})` : ''}</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={convertCountryData(dashboardData.assetsByCountry)}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={(entry: any) => {
+                    if (selectedCurrency === 'Original' && entry.displayMode === 'original') {
+                      // Show original currency values for each country
+                      const countryInvestments = dashboardData?.allInvestments?.filter(
+                        (inv: any) => inv.country === entry.country
+                      ) || [];
+                      
+                      const brlTotal = countryInvestments
+                        .filter(inv => inv.currency === 'BRL')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      const cadTotal = countryInvestments
+                        .filter(inv => inv.currency === 'CAD')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      const usdTotal = countryInvestments
+                        .filter(inv => inv.currency === 'USD')
+                        .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                      
+                      const parts = [];
+                      if (brlTotal > 0) parts.push(formatCurrency(brlTotal, 'BRL'));
+                      if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
+                      if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
+                      
+                      return `${entry.country}: ${parts.join(' + ')}`;
+                    } else {
+                      return `${entry.country}: ${selectedCurrency !== 'Original' 
+                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(entry.total)
+                        : `$${entry.total}`
+                      }`;
+                    }
+                  }}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="total"
+                >
+                  {dashboardData.assetsByCountry.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, _name, props: any) => {
+                  if (selectedCurrency === 'Original' && props.payload?.displayMode === 'original') {
+                    // Show original currency values for each country
+                    const countryInvestments = dashboardData?.allInvestments?.filter(
+                      (inv: any) => inv.country === props.payload.country
+                    ) || [];
+                    
+                    const brlTotal = countryInvestments
+                      .filter(inv => inv.currency === 'BRL')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    const cadTotal = countryInvestments
+                      .filter(inv => inv.currency === 'CAD')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    const usdTotal = countryInvestments
+                      .filter(inv => inv.currency === 'USD')
+                      .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+                    
+                    const parts = [];
+                    if (brlTotal > 0) parts.push(formatCurrency(brlTotal, 'BRL'));
+                    if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
+                    if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
+                    
+                    return [parts.join(' + '), 'Total'];
+                  } else {
+                    return [
+                      selectedCurrency !== 'Original' 
+                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
+                        : `$${value}`, 
+                      'Total'
+                    ];
+                  }
+                }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

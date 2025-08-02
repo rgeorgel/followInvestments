@@ -45,11 +45,41 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
       return (
         <div className="timeline-tooltip">
           <p className="tooltip-label">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value, entry.name === 'BRL Value' ? 'BRL' : 'CAD')}
-            </p>
-          ))}
+          {payload.map((entry: any, index: number) => {
+            const point = entry.payload;
+            let displayValue = entry.value;
+            let currency = 'CAD';
+            
+            // Handle original currency display mode
+            if (point.displayMode === 'original' && !displayCurrency) {
+              if (entry.name === 'BRL Value' && point.originalBrlValue !== undefined) {
+                displayValue = point.originalBrlValue;
+                currency = 'BRL';
+              } else if (entry.name === 'CAD Value' && point.originalCadValue !== undefined) {
+                displayValue = point.originalCadValue;
+                currency = 'CAD';
+              } else if (entry.name === 'Total Portfolio') {
+                // For total, show both currencies
+                const brlPart = point.originalBrlValue > 0 ? formatCurrency(point.originalBrlValue, 'BRL') : '';
+                const cadPart = point.originalCadValue > 0 ? formatCurrency(point.originalCadValue, 'CAD') : '';
+                const parts = [brlPart, cadPart].filter(Boolean);
+                return (
+                  <p key={index} style={{ color: entry.color }}>
+                    {entry.name}: {parts.join(' + ')}
+                  </p>
+                );
+              }
+            } else {
+              // Use display currency or default logic
+              currency = entry.name === 'BRL Value' ? 'BRL' : 'CAD';
+            }
+            
+            return (
+              <p key={index} style={{ color: entry.color }}>
+                {entry.name}: {formatCurrency(displayValue, currency)}
+              </p>
+            );
+          })}
         </div>
       );
     }
@@ -63,19 +93,56 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
         <div className="timeline-summary">
           <div className="summary-item">
             <span className="label">Current Total:</span>
-            <span className="value">{formatCurrency(timelineData.currentTotalValue)}</span>
+            <span className="value">
+              {timelineData.displayMode === 'original' && !displayCurrency ? (
+                // Show original currency breakdown
+                (() => {
+                  const parts = [];
+                  if (timelineData.originalCurrentBrlValue > 0) {
+                    parts.push(formatCurrency(timelineData.originalCurrentBrlValue, 'BRL'));
+                  }
+                  if (timelineData.originalCurrentCadValue > 0) {
+                    parts.push(formatCurrency(timelineData.originalCurrentCadValue, 'CAD'));
+                  }
+                  return parts.join(' + ');
+                })()
+              ) : (
+                formatCurrency(timelineData.currentTotalValue)
+              )}
+            </span>
           </div>
-          {timelineData.currentBrlValue > 0 && (
-            <div className="summary-item">
-              <span className="label">BRL:</span>
-              <span className="value">{formatCurrency(timelineData.currentBrlValue, 'BRL')}</span>
-            </div>
-          )}
-          {timelineData.currentCadValue > 0 && (
-            <div className="summary-item">
-              <span className="label">CAD:</span>
-              <span className="value">{formatCurrency(timelineData.currentCadValue, 'CAD')}</span>
-            </div>
+          {timelineData.displayMode === 'original' && !displayCurrency ? (
+            // Original mode - show individual currencies
+            <>
+              {timelineData.originalCurrentBrlValue > 0 && (
+                <div className="summary-item">
+                  <span className="label">BRL:</span>
+                  <span className="value">{formatCurrency(timelineData.originalCurrentBrlValue, 'BRL')}</span>
+                </div>
+              )}
+              {timelineData.originalCurrentCadValue > 0 && (
+                <div className="summary-item">
+                  <span className="label">CAD:</span>
+                  <span className="value">{formatCurrency(timelineData.originalCurrentCadValue, 'CAD')}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            // Converted mode - show converted values
+            <>
+              {timelineData.currentBrlValue > 0 && (
+                <div className="summary-item">
+                  <span className="label">BRL:</span>
+                  <span className="value">{formatCurrency(timelineData.currentBrlValue, 'BRL')}</span>
+                </div>
+              )}
+              {timelineData.currentCadValue > 0 && (
+                <div className="summary-item">
+                  <span className="label">CAD:</span>
+                  <span className="value">{formatCurrency(timelineData.currentCadValue, 'CAD')}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
