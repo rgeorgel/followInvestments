@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   
   if (isLoading) {
     return (
@@ -22,10 +23,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => {}} />;
+    // Redirect to login route instead of showing login inline
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
   
   return <>{children}</>;
+};
+
+// Login Page Component
+const LoginPage = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const searchParams = new URLSearchParams(location.search);
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
+  
+  const handleLoginSuccess = (user: any) => {
+    login(user);
+    navigate(redirectPath, { replace: true });
+  };
+  
+  return <Login onLoginSuccess={handleLoginSuccess} />;
 };
 
 // Layout Component with Navigation
@@ -132,9 +151,14 @@ const AccountDetailPage = () => {
 
 // Main App Content Component
 const AppContent = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={
+        isAuthenticated && !isLoading ? <Navigate to="/dashboard" replace /> : <LoginPage />
+      } />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <AppLayout>

@@ -146,6 +146,10 @@ export interface InvestmentTimelineData {
   currentTotalValue: number;
   currentBrlValue: number;
   currentCadValue: number;
+  // Optional properties for original currency display mode
+  originalCurrentBrlValue?: number;
+  originalCurrentCadValue?: number;
+  displayMode?: string;
 }
 
 export interface TimelinePoint {
@@ -153,6 +157,10 @@ export interface TimelinePoint {
   totalValue: number;
   brlValue: number;
   cadValue: number;
+  // Optional properties for original currency display mode
+  originalBrlValue?: number;
+  originalCadValue?: number;
+  displayMode?: string;
 }
 
 export interface GoalMarker {

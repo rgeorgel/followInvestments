@@ -98,10 +98,10 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
                 // Show original currency breakdown
                 (() => {
                   const parts = [];
-                  if (timelineData.originalCurrentBrlValue > 0) {
+                  if (timelineData.originalCurrentBrlValue && timelineData.originalCurrentBrlValue > 0) {
                     parts.push(formatCurrency(timelineData.originalCurrentBrlValue, 'BRL'));
                   }
-                  if (timelineData.originalCurrentCadValue > 0) {
+                  if (timelineData.originalCurrentCadValue && timelineData.originalCurrentCadValue > 0) {
                     parts.push(formatCurrency(timelineData.originalCurrentCadValue, 'CAD'));
                   }
                   return parts.join(' + ');
@@ -114,13 +114,13 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
           {timelineData.displayMode === 'original' && !displayCurrency ? (
             // Original mode - show individual currencies
             <>
-              {timelineData.originalCurrentBrlValue > 0 && (
+              {timelineData.originalCurrentBrlValue && timelineData.originalCurrentBrlValue > 0 && (
                 <div className="summary-item">
                   <span className="label">BRL:</span>
                   <span className="value">{formatCurrency(timelineData.originalCurrentBrlValue, 'BRL')}</span>
                 </div>
               )}
-              {timelineData.originalCurrentCadValue > 0 && (
+              {timelineData.originalCurrentCadValue && timelineData.originalCurrentCadValue > 0 && (
                 <div className="summary-item">
                   <span className="label">CAD:</span>
                   <span className="value">{formatCurrency(timelineData.originalCurrentCadValue, 'CAD')}</span>

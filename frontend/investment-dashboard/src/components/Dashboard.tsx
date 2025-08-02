@@ -588,7 +588,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                   }
                 }} />
                 <Bar dataKey="total">
-                  {convertAccountChartData(dashboardData.assetsByAccount).map((entry, index) => (
+                  {convertAccountChartData(dashboardData.assetsByAccount).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>
