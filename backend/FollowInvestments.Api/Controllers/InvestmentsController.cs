@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FollowInvestments.Api.Data;
 using FollowInvestments.Api.Models;
 using FollowInvestments.Api.Services;
+using FollowInvestments.Api.Extensions;
 
 namespace FollowInvestments.Api.Controllers;
 
@@ -22,8 +23,10 @@ public class InvestmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Investment>>> GetInvestments()
     {
+        var userId = User.GetUserId();
         return await _context.Investments
             .Include(i => i.Account)
+            .Where(i => i.UserId == userId)
             .ToListAsync();
     }
 
@@ -31,12 +34,15 @@ public class InvestmentsController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<ActionResult<DashboardData>> GetDashboardData()
     {
+        var userId = User.GetUserId();
         var investments = await _context.Investments
             .Include(i => i.Account)
+            .Where(i => i.UserId == userId)
             .ToListAsync();
         
         // Get all accounts sorted by sort order for consistent ordering
         var allAccounts = await _context.Accounts
+            .Where(a => a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
             .ToListAsync();
@@ -133,9 +139,10 @@ public class InvestmentsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Investment>> GetInvestment(int id)
     {
+        var userId = User.GetUserId();
         var investment = await _context.Investments
             .Include(i => i.Account)
-            .FirstOrDefaultAsync(i => i.Id == id);
+            .FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
 
         if (investment == null)
         {
@@ -148,6 +155,15 @@ public class InvestmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Investment>> PostInvestment([FromBody] CreateInvestmentRequest investment)
     {
+        var userId = User.GetUserId();
+        
+        // Verify the account belongs to the user
+        var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == investment.AccountId && a.UserId == userId);
+        if (account == null)
+        {
+            return BadRequest("Invalid account or account does not belong to user");
+        }
+
         var newInvestment = new Investment
         {
             Name = investment.Name,
@@ -157,7 +173,8 @@ public class InvestmentsController : ControllerBase
             Date = investment.Date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(investment.Date, DateTimeKind.Utc) : investment.Date,
             Description = investment.Description,
             Category = investment.Category,
-            AccountId = investment.AccountId
+            AccountId = investment.AccountId,
+            UserId = userId
         };
 
         _context.Investments.Add(newInvestment);
@@ -189,7 +206,9 @@ public class InvestmentsController : ControllerBase
                 return BadRequest("ID mismatch");
             }
 
-            var existingInvestment = await _context.Investments.FindAsync(id);
+            var userId = User.GetUserId();
+            var existingInvestment = await _context.Investments
+                .FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
             if (existingInvestment == null)
             {
                 return NotFound();
@@ -217,7 +236,9 @@ public class InvestmentsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteInvestment(int id)
     {
-        var investment = await _context.Investments.FindAsync(id);
+        var userId = User.GetUserId();
+        var investment = await _context.Investments
+            .FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
         if (investment == null)
         {
             return NotFound();
@@ -232,11 +253,14 @@ public class InvestmentsController : ControllerBase
     [HttpGet("portfolio/timeline")]
     public async Task<ActionResult<InvestmentTimelineData>> GetTimeline()
     {
+        var userId = User.GetUserId();
         var investments = await _context.Investments
             .Include(i => i.Account)
+            .Where(i => i.UserId == userId)
             .ToListAsync();
 
         var allAccounts = await _context.Accounts
+            .Where(a => a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
             .ToListAsync();
@@ -344,7 +368,8 @@ public class InvestmentsController : ControllerBase
 
     private bool InvestmentExists(int id)
     {
-        return _context.Investments.Any(e => e.Id == id);
+        var userId = User.GetUserId();
+        return _context.Investments.Any(e => e.Id == id && e.UserId == userId);
     }
 }
 

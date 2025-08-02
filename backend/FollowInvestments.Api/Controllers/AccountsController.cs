@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FollowInvestments.Api.Data;
 using FollowInvestments.Api.Models;
+using FollowInvestments.Api.Extensions;
 
 namespace FollowInvestments.Api.Controllers;
 
@@ -19,7 +20,9 @@ public class AccountsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Account>>> GetAccounts()
     {
+        var userId = User.GetUserId();
         return await _context.Accounts
+            .Where(a => a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
             .ToListAsync();
@@ -28,9 +31,10 @@ public class AccountsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Account>> GetAccount(int id)
     {
+        var userId = User.GetUserId();
         var account = await _context.Accounts
             .Include(a => a.Investments)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
 
         if (account == null)
         {
@@ -43,6 +47,7 @@ public class AccountsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Account>> PostAccount([FromBody] CreateAccountRequest request)
     {
+        var userId = User.GetUserId();
         var account = new Account
         {
             Name = request.Name,
@@ -50,7 +55,9 @@ public class AccountsController : ControllerBase
             Goal2 = request.Goal2,
             Goal3 = request.Goal3,
             Goal4 = request.Goal4,
-            Goal5 = request.Goal5
+            Goal5 = request.Goal5,
+            SortOrder = request.SortOrder,
+            UserId = userId
         };
 
         _context.Accounts.Add(account);
@@ -60,14 +67,30 @@ public class AccountsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAccount(int id, Account account)
+    public async Task<IActionResult> PutAccount(int id, UpdateAccountRequest request)
     {
-        if (id != account.Id)
+        if (id != request.Id)
         {
-            return BadRequest();
+            return BadRequest("ID mismatch");
         }
 
-        _context.Entry(account).State = EntityState.Modified;
+        var userId = User.GetUserId();
+        var existingAccount = await _context.Accounts
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
+            
+        if (existingAccount == null)
+        {
+            return NotFound();
+        }
+
+        // Update only allowed fields
+        existingAccount.Name = request.Name;
+        existingAccount.Goal1 = request.Goal1;
+        existingAccount.Goal2 = request.Goal2;
+        existingAccount.Goal3 = request.Goal3;
+        existingAccount.Goal4 = request.Goal4;
+        existingAccount.Goal5 = request.Goal5;
+        existingAccount.SortOrder = request.SortOrder;
 
         try
         {
@@ -91,9 +114,10 @@ public class AccountsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAccount(int id)
     {
+        var userId = User.GetUserId();
         var account = await _context.Accounts
             .Include(a => a.Investments)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
             
         if (account == null)
         {
@@ -114,6 +138,7 @@ public class AccountsController : ControllerBase
 
     private bool AccountExists(int id)
     {
-        return _context.Accounts.Any(e => e.Id == id);
+        var userId = User.GetUserId();
+        return _context.Accounts.Any(e => e.Id == id && e.UserId == userId);
     }
 }

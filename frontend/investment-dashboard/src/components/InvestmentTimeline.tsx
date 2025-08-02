@@ -1,6 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import type { InvestmentTimelineData, TimelinePoint, GoalMarker } from '../types/Investment';
+import type { InvestmentTimelineData, TimelinePoint } from '../types/Investment';
 
 interface InvestmentTimelineProps {
   timelineData: InvestmentTimelineData;
@@ -39,15 +39,6 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
   // Sort by date
   chartData.sort((a, b) => a.dateValue - b.dateValue);
 
-  // Group goal markers by currency for better visualization
-  const brlGoals = timelineData.goalMarkers.filter(g => g.currency === 'BRL');
-  const cadGoals = timelineData.goalMarkers.filter(g => g.currency === 'CAD');
-
-  // Get the maximum value for Y-axis scaling
-  const maxValue = Math.max(
-    ...chartData.map(d => d.totalValue),
-    ...timelineData.goalMarkers.map(g => g.value)
-  );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -158,7 +149,7 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
                   strokeWidth={2}
                   label={{ 
                     value: `5-Year Goal: ${formatCurrency(fiveYearGoal.value, fiveYearGoal.currency)}`, 
-                    position: 'topRight',
+                    position: 'top',
                     fontSize: 12,
                     fill: '#6f42c1',
                     fontWeight: 'bold'

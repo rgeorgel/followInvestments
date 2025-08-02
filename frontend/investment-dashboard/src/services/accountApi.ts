@@ -2,9 +2,22 @@ import type { Account, CreateAccountRequest } from '../types/Account';
 
 const API_BASE_URL = 'http://localhost:9900/api';
 
+const createAuthHeaders = () => {
+  const token = localStorage.getItem('sessionToken');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export const accountApi = {
   async getAll(): Promise<Account[]> {
-    const response = await fetch(`${API_BASE_URL}/accounts`);
+    const response = await fetch(`${API_BASE_URL}/accounts`, {
+      headers: createAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch accounts');
     }
@@ -12,7 +25,9 @@ export const accountApi = {
   },
 
   async getById(id: number): Promise<Account> {
-    const response = await fetch(`${API_BASE_URL}/accounts/${id}`);
+    const response = await fetch(`${API_BASE_URL}/accounts/${id}`, {
+      headers: createAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch account');
     }
@@ -22,9 +37,7 @@ export const accountApi = {
   async create(account: CreateAccountRequest): Promise<Account> {
     const response = await fetch(`${API_BASE_URL}/accounts`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: createAuthHeaders(),
       body: JSON.stringify(account),
     });
     if (!response.ok) {
@@ -36,9 +49,7 @@ export const accountApi = {
   async update(id: number, account: Account): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/accounts/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: createAuthHeaders(),
       body: JSON.stringify(account),
     });
     if (!response.ok) {
@@ -49,6 +60,7 @@ export const accountApi = {
   async delete(id: number): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/accounts/${id}`, {
       method: 'DELETE',
+      headers: createAuthHeaders(),
     });
     if (!response.ok) {
       const errorText = await response.text();

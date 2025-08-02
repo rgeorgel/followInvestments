@@ -38,8 +38,13 @@ public class Investment
     [Required]
     public int AccountId { get; set; }
 
-    // Navigation property
+    // Foreign key to User
+    [Required]
+    public int UserId { get; set; }
+
+    // Navigation properties
     public Account Account { get; set; } = null!;
+    public virtual User User { get; set; } = null!;
 
     public string Country => Currency == Currency.BRL ? "Brazil" : "Canada";
     

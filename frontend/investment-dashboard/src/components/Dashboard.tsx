@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { DashboardData, InvestmentTimelineData } from '../types/Investment';
+import type { DashboardData } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
 import InvestmentTimeline from './InvestmentTimeline';
@@ -20,8 +20,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     // Load saved currency from localStorage, default to 'Original' if not found
     return localStorage.getItem('dashboardCurrency') || 'Original';
   });
-  const [exchangeRates, setExchangeRates] = useState<{[key: string]: number}>({});
-  const [convertedData, setConvertedData] = useState<any>(null);
 
   const getProgressColor = (progress: number) => {
     if (progress >= 100) return '#27ae60'; // Green - Goal reached
@@ -146,9 +144,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     return convertCurrency(value, originalCurrency, selectedCurrency);
   };
 
-  const getDisplayCurrency = (originalCurrency: string): string => {
-    return selectedCurrency === 'Original' ? originalCurrency : selectedCurrency;
-  };
 
   const calculateTotalPortfolioValue = (): { total: number, display: string } => {
     if (!dashboardData?.accountGoals) {
@@ -314,19 +309,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
               }
 
               // For display: convert all values to selected currency for comparison if not "Original"
-              let displayBrlTotal = brlTotal;
-              let displayCadTotal = cadTotal;
-              
-              if (selectedCurrency !== 'Original') {
-                // Convert both to selected currency and combine them
-                const convertedBrl = getConvertedValue(brlTotal, 'BRL');
-                const convertedCad = getConvertedValue(cadTotal, 'CAD');
-                const combinedTotal = convertedBrl + convertedCad;
-                
-                // Show combined total in selected currency
-                displayBrlTotal = brlTotal > 0 ? combinedTotal : 0;
-                displayCadTotal = cadTotal > 0 && brlTotal === 0 ? combinedTotal : 0;
-              }
 
               // Determine primary country based on which currency has higher original total
               const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';

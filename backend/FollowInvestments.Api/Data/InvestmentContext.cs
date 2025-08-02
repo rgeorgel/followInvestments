@@ -13,6 +13,7 @@ public class InvestmentContext : DbContext
     public DbSet<Account> Accounts { get; set; }
     public DbSet<StockPrice> StockPrices { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +38,12 @@ public class InvestmentContext : DbContext
                 .WithMany(a => a.Investments)
                 .HasForeignKey(e => e.AccountId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure relationship with User
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Investments)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Account>(entity =>
@@ -57,6 +64,12 @@ public class InvestmentContext : DbContext
                 .HasColumnType("decimal(18,2)");
             entity.Property(e => e.Goal5)
                 .HasColumnType("decimal(18,2)");
+
+            // Configure relationship with User
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Accounts)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<StockPrice>(entity =>
@@ -145,6 +158,44 @@ public class InvestmentContext : DbContext
             // Performance index for lookups
             entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency, e.LastUpdated })
                 .HasDatabaseName("IDX_ExchangeRates_Lookup");
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+                
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(255);
+                
+            entity.Property(e => e.PasswordHash)
+                .IsRequired();
+                
+            entity.Property(e => e.Role)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("user");
+                
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Unique constraint on email
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("UK_Users_Email");
+                
+            // Performance index
+            entity.HasIndex(e => e.Email)
+                .HasDatabaseName("IDX_Users_Email");
         });
     }
 }

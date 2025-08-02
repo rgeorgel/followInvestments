@@ -3,6 +3,7 @@ using System;
 using FollowInvestments.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FollowInvestments.Api.Migrations
 {
     [DbContext(typeof(InvestmentContext))]
-    partial class InvestmentContextModelSnapshot : ModelSnapshot
+    [Migration("20250801132737_AddUserAuthentication")]
+    partial class AddUserAuthentication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,7 +56,7 @@ namespace FollowInvestments.Api.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -139,17 +142,12 @@ namespace FollowInvestments.Api.Migrations
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(18,4)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Investments");
                 });
@@ -268,13 +266,9 @@ namespace FollowInvestments.Api.Migrations
 
             modelBuilder.Entity("FollowInvestments.Api.Models.Account", b =>
                 {
-                    b.HasOne("FollowInvestments.Api.Models.User", "User")
+                    b.HasOne("FollowInvestments.Api.Models.User", null)
                         .WithMany("Accounts")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("FollowInvestments.Api.Models.Investment", b =>
@@ -285,15 +279,7 @@ namespace FollowInvestments.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("FollowInvestments.Api.Models.User", "User")
-                        .WithMany("Investments")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("Account");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FollowInvestments.Api.Models.Account", b =>
@@ -304,8 +290,6 @@ namespace FollowInvestments.Api.Migrations
             modelBuilder.Entity("FollowInvestments.Api.Models.User", b =>
                 {
                     b.Navigation("Accounts");
-
-                    b.Navigation("Investments");
                 });
 #pragma warning restore 612, 618
         }

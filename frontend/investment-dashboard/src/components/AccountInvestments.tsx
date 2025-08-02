@@ -48,7 +48,17 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
 
   const fetchAccountPerformance = async (accountId: number) => {
     try {
-      const response = await fetch(`http://localhost:9900/api/investments/account/${accountId}/performance`);
+      const token = localStorage.getItem('sessionToken');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`http://localhost:9900/api/investments/account/${accountId}/performance`, {
+        headers
+      });
       if (response.ok) {
         const performance = await response.json();
         setAccountPerformance(performance);

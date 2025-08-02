@@ -10,6 +10,29 @@ const api = axios.create({
   },
 });
 
+// Add token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('sessionToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear invalid session and redirect to login
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('user');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const investmentApi = {
   // Get all investments
   getAll: async (): Promise<Investment[]> => {
@@ -78,7 +101,7 @@ export const investmentApi = {
   },
 
   // Get timeline data based on real investment dates with current market values
-  getTimeline: async (targetCurrency?: string) => {
+  getTimeline: async () => {
     const allInvestments = await investmentApi.getAll();
     const dashboardData = await investmentApi.getDashboard();
     
@@ -156,12 +179,12 @@ export const investmentApi = {
     
     dashboardData.accountGoals?.forEach((account: any) => {
       const currency = account.currency;
-      if (goalsByCurrency[currency] && account.goals) {
-        goalsByCurrency[currency].year1 += account.goals.year1 || 0;
-        goalsByCurrency[currency].year2 += account.goals.year2 || 0;
-        goalsByCurrency[currency].year3 += account.goals.year3 || 0;
-        goalsByCurrency[currency].year4 += account.goals.year4 || 0;
-        goalsByCurrency[currency].year5 += account.goals.year5 || 0;
+      if (goalsByCurrency[currency as keyof typeof goalsByCurrency] && account.goals) {
+        goalsByCurrency[currency as keyof typeof goalsByCurrency].year1 += account.goals.year1 || 0;
+        goalsByCurrency[currency as keyof typeof goalsByCurrency].year2 += account.goals.year2 || 0;
+        goalsByCurrency[currency as keyof typeof goalsByCurrency].year3 += account.goals.year3 || 0;
+        goalsByCurrency[currency as keyof typeof goalsByCurrency].year4 += account.goals.year4 || 0;
+        goalsByCurrency[currency as keyof typeof goalsByCurrency].year5 += account.goals.year5 || 0;
       }
     });
     
