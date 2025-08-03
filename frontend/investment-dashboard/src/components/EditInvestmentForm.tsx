@@ -145,9 +145,9 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
               value={formData.value || ''}
               onChange={handleInputChange}
               step="0.01"
-              min="0"
               required
             />
+            <small className="form-help">Use positive values for investments, negative for withdrawals</small>
           </div>
 
           <div className="form-group">
@@ -159,7 +159,6 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
               value={formData.quantity || ''}
               onChange={handleInputChange}
               step="0.0001"
-              min="0"
               required
             />
           </div>

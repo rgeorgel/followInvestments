@@ -175,6 +175,14 @@
   resize: vertical;
 }
 
+.form-help {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+  margin-top: 0.25rem;
+  display: block;
+}
+
 .investment-form button {
   background-color: #3498db;
   color: white;

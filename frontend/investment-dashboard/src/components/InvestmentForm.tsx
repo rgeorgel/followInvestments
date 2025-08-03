@@ -111,9 +111,9 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
             value={formData.value || ''}
             onChange={handleInputChange}
             step="0.01"
-            min="0"
             required
           />
+          <small className="form-help">Use positive values for investments, negative for withdrawals</small>
         </div>
 
         <div className="form-group">
@@ -125,7 +125,6 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
             value={formData.quantity || ''}
             onChange={handleInputChange}
             step="0.0001"
-            min="0"
             required
           />
         </div>
