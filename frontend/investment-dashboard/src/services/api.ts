@@ -10,6 +10,23 @@ const api = axios.create({
   },
 });
 
+// Request deduplication cache to prevent concurrent duplicate requests
+const pendingRequests = new Map<string, Promise<any>>();
+
+const withDeduplication = <T>(key: string, requestFn: () => Promise<T>): Promise<T> => {
+  const existing = pendingRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  
+  const promise = requestFn().finally(() => {
+    pendingRequests.delete(key);
+  });
+  
+  pendingRequests.set(key, promise);
+  return promise;
+};
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('sessionToken');
@@ -96,254 +113,12 @@ export const investmentApi = {
 
   // Get dashboard data
   getDashboard: async (): Promise<DashboardData> => {
-    const response = await api.get<DashboardData>('/investments/dashboard');
-    return response.data;
+    return withDeduplication('dashboard', async () => {
+      const response = await api.get<DashboardData>('/investments/dashboard');
+      return response.data;
+    });
   },
 
-  // Get timeline data based on real investment dates with current market values
-  getTimeline: async () => {
-    const allInvestments = await investmentApi.getAll();
-    const dashboardData = await investmentApi.getDashboard();
-    
-    // Create a map of current values by account and currency from dashboard
-    const currentValuesByAccount = new Map();
-    dashboardData.accountGoals?.forEach((account: any) => {
-      currentValuesByAccount.set(`${account.accountName}-${account.currency}`, account.currentValue);
-    });
-    
-    // Get unique dates and sort them
-    const investmentDates = [...new Set(allInvestments.map(inv => inv.date.split('T')[0]))]
-      .sort()
-      .map(dateStr => new Date(dateStr));
-
-    // Calculate cumulative values at each date
-    const timelinePoints = investmentDates.map(date => {
-      const investmentsUpToDate = allInvestments.filter(inv => 
-        new Date(inv.date) <= date
-      );
-      
-      // Group investments by account and currency
-      const accountCurrencyTotals = new Map();
-      investmentsUpToDate.forEach(inv => {
-        const key = `${inv.account.name}-${inv.currency}`;
-        const current = accountCurrencyTotals.get(key) || 0;
-        accountCurrencyTotals.set(key, current + (inv.total || (inv.value * inv.quantity)));
-      });
-      
-      let brlValue = 0;
-      let cadValue = 0;
-      
-      // For the most recent date, use current market values
-      const isLatestDate = date.getTime() === Math.max(...investmentDates.map(d => d.getTime()));
-      
-      if (isLatestDate) {
-        // Use current values from dashboard for the latest date
-        dashboardData.accountGoals?.forEach((account: any) => {
-          if (accountCurrencyTotals.has(`${account.accountName}-${account.currency}`)) {
-            if (account.currency === 'BRL') {
-              brlValue += account.currentValue;
-            } else if (account.currency === 'CAD') {
-              cadValue += account.currentValue;
-            }
-          }
-        });
-      } else {
-        // For historical dates, use book values (what was invested at that time)
-        accountCurrencyTotals.forEach((total, key) => {
-          const currency = key.split('-')[1];
-          if (currency === 'BRL') {
-            brlValue += total;
-          } else if (currency === 'CAD') {
-            cadValue += total;
-          }
-        });
-      }
-
-      return {
-        date: date.toISOString(),
-        totalValue: brlValue + cadValue,
-        brlValue,
-        cadValue
-      };
-    });
-
-    // Create goal markers grouped by country and total
-    const goalMarkers: any[] = [];
-    const currentYear = new Date().getFullYear();
-    
-    // Group goals by currency and calculate totals
-    const goalsByCurrency = {
-      BRL: { year1: 0, year2: 0, year3: 0, year4: 0, year5: 0 },
-      CAD: { year1: 0, year2: 0, year3: 0, year4: 0, year5: 0 }
-    };
-    
-    dashboardData.accountGoals?.forEach((account: any) => {
-      const currency = account.currency;
-      if (goalsByCurrency[currency as keyof typeof goalsByCurrency] && account.goals) {
-        goalsByCurrency[currency as keyof typeof goalsByCurrency].year1 += account.goals.year1 || 0;
-        goalsByCurrency[currency as keyof typeof goalsByCurrency].year2 += account.goals.year2 || 0;
-        goalsByCurrency[currency as keyof typeof goalsByCurrency].year3 += account.goals.year3 || 0;
-        goalsByCurrency[currency as keyof typeof goalsByCurrency].year4 += account.goals.year4 || 0;
-        goalsByCurrency[currency as keyof typeof goalsByCurrency].year5 += account.goals.year5 || 0;
-      }
-    });
-    
-    // Add currency-specific goals (BRL goals)
-    if (goalsByCurrency.BRL.year1 > 0) {
-      goalMarkers.push({
-        year: currentYear + 1,
-        value: goalsByCurrency.BRL.year1,
-        currency: 'BRL',
-        type: 'currency',
-        label: `BRL Goals ${currentYear + 1}`
-      });
-    }
-    if (goalsByCurrency.BRL.year2 > 0) {
-      goalMarkers.push({
-        year: currentYear + 2,
-        value: goalsByCurrency.BRL.year2,
-        currency: 'BRL',
-        type: 'currency',
-        label: `BRL Goals ${currentYear + 2}`
-      });
-    }
-    if (goalsByCurrency.BRL.year3 > 0) {
-      goalMarkers.push({
-        year: currentYear + 3,
-        value: goalsByCurrency.BRL.year3,
-        currency: 'BRL',
-        type: 'currency',
-        label: `BRL Goals ${currentYear + 3}`
-      });
-    }
-    if (goalsByCurrency.BRL.year4 > 0) {
-      goalMarkers.push({
-        year: currentYear + 4,
-        value: goalsByCurrency.BRL.year4,
-        currency: 'BRL',
-        type: 'currency',
-        label: `BRL Goals ${currentYear + 4}`
-      });
-    }
-    if (goalsByCurrency.BRL.year5 > 0) {
-      goalMarkers.push({
-        year: currentYear + 5,
-        value: goalsByCurrency.BRL.year5,
-        currency: 'BRL',
-        type: 'currency',
-        label: `BRL Goals ${currentYear + 5}`
-      });
-    }
-    
-    // Add currency-specific goals (CAD goals)
-    if (goalsByCurrency.CAD.year1 > 0) {
-      goalMarkers.push({
-        year: currentYear + 1,
-        value: goalsByCurrency.CAD.year1,
-        currency: 'CAD',
-        type: 'currency',
-        label: `CAD Goals ${currentYear + 1}`
-      });
-    }
-    if (goalsByCurrency.CAD.year2 > 0) {
-      goalMarkers.push({
-        year: currentYear + 2,
-        value: goalsByCurrency.CAD.year2,
-        currency: 'CAD',
-        type: 'currency',
-        label: `CAD Goals ${currentYear + 2}`
-      });
-    }
-    if (goalsByCurrency.CAD.year3 > 0) {
-      goalMarkers.push({
-        year: currentYear + 3,
-        value: goalsByCurrency.CAD.year3,
-        currency: 'CAD',
-        type: 'currency',
-        label: `CAD Goals ${currentYear + 3}`
-      });
-    }
-    if (goalsByCurrency.CAD.year4 > 0) {
-      goalMarkers.push({
-        year: currentYear + 4,
-        value: goalsByCurrency.CAD.year4,
-        currency: 'CAD',
-        type: 'currency',
-        label: `CAD Goals ${currentYear + 4}`
-      });
-    }
-    if (goalsByCurrency.CAD.year5 > 0) {
-      goalMarkers.push({
-        year: currentYear + 5,
-        value: goalsByCurrency.CAD.year5,
-        currency: 'CAD',
-        type: 'currency',
-        label: `CAD Goals ${currentYear + 5}`
-      });
-    }
-    
-    // Add total goals (BRL + CAD combined)
-    const totalYear1 = goalsByCurrency.BRL.year1 + goalsByCurrency.CAD.year1;
-    const totalYear2 = goalsByCurrency.BRL.year2 + goalsByCurrency.CAD.year2;
-    const totalYear3 = goalsByCurrency.BRL.year3 + goalsByCurrency.CAD.year3;
-    const totalYear4 = goalsByCurrency.BRL.year4 + goalsByCurrency.CAD.year4;
-    const totalYear5 = goalsByCurrency.BRL.year5 + goalsByCurrency.CAD.year5;
-    
-    if (totalYear1 > 0) {
-      goalMarkers.push({
-        year: currentYear + 1,
-        value: totalYear1,
-        currency: 'TOTAL',
-        type: 'total',
-        label: `Total Goals ${currentYear + 1}`
-      });
-    }
-    if (totalYear2 > 0) {
-      goalMarkers.push({
-        year: currentYear + 2,
-        value: totalYear2,
-        currency: 'TOTAL',
-        type: 'total',
-        label: `Total Goals ${currentYear + 2}`
-      });
-    }
-    if (totalYear3 > 0) {
-      goalMarkers.push({
-        year: currentYear + 3,
-        value: totalYear3,
-        currency: 'TOTAL',
-        type: 'total',
-        label: `Total Goals ${currentYear + 3}`
-      });
-    }
-    if (totalYear4 > 0) {
-      goalMarkers.push({
-        year: currentYear + 4,
-        value: totalYear4,
-        currency: 'TOTAL',
-        type: 'total',
-        label: `Total Goals ${currentYear + 4}`
-      });
-    }
-    if (totalYear5 > 0) {
-      goalMarkers.push({
-        year: currentYear + 5,
-        value: totalYear5,
-        currency: 'TOTAL',
-        type: 'total',
-        label: `Total Goals ${currentYear + 5}`
-      });
-    }
-
-    const lastPoint = timelinePoints[timelinePoints.length - 1];
-    return {
-      timelinePoints,
-      goalMarkers,
-      currentTotalValue: lastPoint?.totalValue || 0,
-      currentBrlValue: lastPoint?.brlValue || 0,
-      currentCadValue: lastPoint?.cadValue || 0
-    };
-  },
 
   // Currency conversion functions
   currency: {

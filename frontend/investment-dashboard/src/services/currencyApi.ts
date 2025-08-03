@@ -4,11 +4,27 @@ export interface ExchangeRates {
   [key: string]: number;
 }
 
+// Request deduplication cache to prevent concurrent duplicate requests
+const pendingRequests = new Map<string, Promise<any>>();
+
+const withDeduplication = <T>(key: string, requestFn: () => Promise<T>): Promise<T> => {
+  const existing = pendingRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  
+  const promise = requestFn().finally(() => {
+    pendingRequests.delete(key);
+  });
+  
+  pendingRequests.set(key, promise);
+  return promise;
+};
+
 class CurrencyApi {
   private cachedRates: ExchangeRates = {};
   private lastFetch: Date | null = null;
   private cacheTimeout = 1000 * 60 * 60; // 1 hour cache
-  private initialized = false;
 
   // Fallback rates in case backend is unavailable
   private fallbackRates: ExchangeRates = {
@@ -23,7 +39,6 @@ class CurrencyApi {
   constructor() {
     // Initialize with fallback rates immediately
     this.cachedRates = { ...this.fallbackRates };
-    this.initialized = true;
     
     // Try to load real rates in background
     this.loadRatesInBackground();
@@ -55,26 +70,28 @@ class CurrencyApi {
       return this.cachedRates;
     }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/currency/rates`);
-      if (response.ok) {
-        const rates = await response.json();
-        this.cachedRates = rates;
-        this.lastFetch = new Date();
-        
-        // If we got some rates, use them, otherwise fall back
-        if (Object.keys(rates).length > 0) {
-          return rates;
+    return withDeduplication('currency-rates', async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/currency/rates`);
+        if (response.ok) {
+          const rates = await response.json();
+          this.cachedRates = rates;
+          this.lastFetch = new Date();
+          
+          // If we got some rates, use them, otherwise fall back
+          if (Object.keys(rates).length > 0) {
+            return rates;
+          }
         }
+      } catch (error) {
+        console.warn('Failed to fetch rates from backend, using fallback rates:', error);
       }
-    } catch (error) {
-      console.warn('Failed to fetch rates from backend, using fallback rates:', error);
-    }
 
-    // Use fallback rates if backend unavailable or returns empty
-    this.cachedRates = this.fallbackRates;
-    this.lastFetch = new Date();
-    return this.fallbackRates;
+      // Use fallback rates if backend unavailable or returns empty
+      this.cachedRates = this.fallbackRates;
+      this.lastFetch = new Date();
+      return this.fallbackRates;
+    });
   }
 
   async getExchangeRate(fromCurrency: string, toCurrency: string): Promise<number> {
@@ -170,6 +187,11 @@ class CurrencyApi {
   // Force refresh rates from backend
   async refreshRates(): Promise<void> {
     try {
+      // Only refresh if rates are stale (older than 1 hour)
+      if (this.lastFetch && (Date.now() - this.lastFetch.getTime()) < this.cacheTimeout) {
+        return; // Rates are still fresh, no need to refresh
+      }
+      
       await fetch(`${API_BASE_URL}/currency/update-rates`, { method: 'POST' });
       this.lastFetch = null; // Force re-fetch on next call
     } catch (error) {

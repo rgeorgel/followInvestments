@@ -69,6 +69,10 @@ builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
 // Add Password service
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 
+// Add Cache service
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+
 // Add Background Service for automatic currency updates
 builder.Services.AddHostedService<CurrencyUpdateBackgroundService>();
 

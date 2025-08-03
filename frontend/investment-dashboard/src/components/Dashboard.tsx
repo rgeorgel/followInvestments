@@ -35,16 +35,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    loadCurrencyRates();
+    let isMounted = true;
+    
+    // Fetch both dashboard data and currency rates in parallel for better performance
+    Promise.all([
+      fetchDashboardData(),
+      loadCurrencyRates()
+    ]).catch(error => {
+      if (isMounted) {
+        console.error('Failed to load initial data:', error);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadCurrencyRates = async () => {
     try {
-      // Refresh currency rates in background
-      currencyApi.refreshRates().catch(console.warn);
-      
-      // Get current rates
+      // Get current rates (no need to refresh separately as getAllRates handles caching)
       const rates = await currencyApi.getAllRates();
       setCurrencyRates(rates);
     } catch (error) {
@@ -56,11 +66,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     try {
       setLoading(true);
       const data = await investmentApi.getDashboard();
-
-      // Fetch real timeline data based on actual investment dates
-      const timelineData = await investmentApi.getTimeline();
-      data.timelineData = timelineData;
-
       setDashboardData(data);
     } catch (err) {
       setError('Failed to fetch dashboard data');

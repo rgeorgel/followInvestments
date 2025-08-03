@@ -13,11 +13,13 @@ public class InvestmentsController : ControllerBase
 {
     private readonly InvestmentContext _context;
     private readonly IInvestmentPerformanceService _performanceService;
+    private readonly ICacheService _cacheService;
 
-    public InvestmentsController(InvestmentContext context, IInvestmentPerformanceService performanceService)
+    public InvestmentsController(InvestmentContext context, IInvestmentPerformanceService performanceService, ICacheService cacheService)
     {
         _context = context;
         _performanceService = performanceService;
+        _cacheService = cacheService;
     }
 
     [HttpGet]
@@ -35,6 +37,14 @@ public class InvestmentsController : ControllerBase
     public async Task<ActionResult<DashboardData>> GetDashboardData()
     {
         var userId = User.GetUserId();
+        var cacheKey = $"dashboard_user_{userId}";
+        
+        // Try to get from cache first
+        var cachedData = await _cacheService.GetAsync<DashboardData>(cacheKey);
+        if (cachedData != null)
+        {
+            return Ok(cachedData);
+        }
         var investments = await _context.Investments
             .Include(i => i.Account)
             .Where(i => i.UserId == userId)
@@ -125,15 +135,24 @@ public class InvestmentsController : ControllerBase
             };
         }).ToList();
 
-        return new DashboardData
+        // Generate timeline data for dashboard
+        var timelineData = await GenerateTimelineData(investments, allAccounts);
+
+        var dashboardData = new DashboardData
         {
             AllInvestments = investments,
             GroupedInvestments = groupedInvestments,
             AssetsByAccount = assetsByAccount,
             AssetsByCountry = assetsByCountry,
             AssetsByCategory = assetsByCategory,
-            AccountGoals = accountGoals
+            AccountGoals = accountGoals,
+            TimelineData = timelineData
         };
+
+        // Cache the result for 1 hour
+        await _cacheService.SetAsync(cacheKey, dashboardData, TimeSpan.FromHours(1));
+
+        return dashboardData;
     }
 
     [HttpGet("{id:int}")]
@@ -180,7 +199,19 @@ public class InvestmentsController : ControllerBase
         _context.Investments.Add(newInvestment);
         await _context.SaveChangesAsync();
 
+        // Invalidate dashboard cache
+        await InvalidateDashboardCache(userId);
+
         return CreatedAtAction(nameof(GetInvestment), new { id = newInvestment.Id }, newInvestment);
+    }
+
+    private async Task InvalidateDashboardCache(int userId)
+    {
+        var dashboardCacheKey = $"dashboard_user_{userId}";
+        var timelineCacheKey = $"timeline_user_{userId}";
+        
+        await _cacheService.RemoveAsync(dashboardCacheKey);
+        await _cacheService.RemoveAsync(timelineCacheKey);
     }
 
     [HttpPut("{id}/test")]
@@ -225,6 +256,10 @@ public class InvestmentsController : ControllerBase
             existingInvestment.AccountId = updateRequest.AccountId;
 
             await _context.SaveChangesAsync();
+            
+            // Invalidate dashboard cache
+            await InvalidateDashboardCache(userId);
+            
             return NoContent();
         }
         catch (Exception ex)
@@ -247,6 +282,9 @@ public class InvestmentsController : ControllerBase
         _context.Investments.Remove(investment);
         await _context.SaveChangesAsync();
 
+        // Invalidate dashboard cache
+        await InvalidateDashboardCache(userId);
+
         return NoContent();
     }
 
@@ -254,6 +292,14 @@ public class InvestmentsController : ControllerBase
     public async Task<ActionResult<InvestmentTimelineData>> GetTimeline()
     {
         var userId = User.GetUserId();
+        var cacheKey = $"timeline_user_{userId}";
+        
+        // Try to get from cache first
+        var cachedData = await _cacheService.GetAsync<InvestmentTimelineData>(cacheKey);
+        if (cachedData != null)
+        {
+            return Ok(cachedData);
+        }
         var investments = await _context.Investments
             .Include(i => i.Account)
             .Where(i => i.UserId == userId)
@@ -312,7 +358,7 @@ public class InvestmentsController : ControllerBase
                 goalMarkers.Add(new GoalMarker { Year = currentYear + 5, Value = account.Goal5.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 5" });
         }
 
-        return new InvestmentTimelineData
+        var timelineData = new InvestmentTimelineData
         {
             TimelinePoints = timelinePoints,
             GoalMarkers = goalMarkers,
@@ -320,6 +366,11 @@ public class InvestmentsController : ControllerBase
             CurrentBrlValue = timelinePoints.LastOrDefault()?.BrlValue ?? 0,
             CurrentCadValue = timelinePoints.LastOrDefault()?.CadValue ?? 0
         };
+
+        // Cache the result for 1 hour
+        await _cacheService.SetAsync(cacheKey, timelineData, TimeSpan.FromHours(1));
+
+        return timelineData;
     }
 
     private string GetAccountCurrency(Account account)
@@ -366,6 +417,65 @@ public class InvestmentsController : ControllerBase
         }
     }
 
+    private async Task<InvestmentTimelineData> GenerateTimelineData(List<Investment> investments, List<Account> allAccounts)
+    {
+        // Create timeline data points based on investment dates
+        var timelinePoints = new List<TimelinePoint>();
+        
+        // Get all unique investment dates and sort them
+        var investmentDates = investments
+            .Select(i => i.Date.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        // Calculate cumulative portfolio value at each date
+        foreach (var date in investmentDates)
+        {
+            var investmentsUpToDate = investments
+                .Where(i => i.Date.Date <= date)
+                .ToList();
+
+            var totalValue = investmentsUpToDate.Sum(i => i.Total);
+            
+            timelinePoints.Add(new TimelinePoint
+            {
+                Date = date,
+                TotalValue = totalValue,
+                BrlValue = investmentsUpToDate.Where(i => i.Currency == Currency.BRL).Sum(i => i.Total),
+                CadValue = investmentsUpToDate.Where(i => i.Currency == Currency.CAD).Sum(i => i.Total)
+            });
+        }
+
+        // Create goal markers for visualization
+        var goalMarkers = new List<GoalMarker>();
+        var currentYear = DateTime.Now.Year;
+        
+        foreach (var account in allAccounts)
+        {
+            var currency = GetAccountCurrency(account);
+            if (account.Goal1.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 1, Value = account.Goal1.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 1" });
+            if (account.Goal2.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 2, Value = account.Goal2.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 2" });
+            if (account.Goal3.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 3, Value = account.Goal3.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 3" });
+            if (account.Goal4.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 4, Value = account.Goal4.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 4" });
+            if (account.Goal5.HasValue)
+                goalMarkers.Add(new GoalMarker { Year = currentYear + 5, Value = account.Goal5.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 5" });
+        }
+
+        return new InvestmentTimelineData
+        {
+            TimelinePoints = timelinePoints,
+            GoalMarkers = goalMarkers,
+            CurrentTotalValue = timelinePoints.LastOrDefault()?.TotalValue ?? 0,
+            CurrentBrlValue = timelinePoints.LastOrDefault()?.BrlValue ?? 0,
+            CurrentCadValue = timelinePoints.LastOrDefault()?.CadValue ?? 0
+        };
+    }
+
     private bool InvestmentExists(int id)
     {
         var userId = User.GetUserId();
@@ -381,6 +491,7 @@ public class DashboardData
     public object AssetsByCountry { get; set; } = new();
     public List<AssetByCategory> AssetsByCategory { get; set; } = new();
     public List<AccountGoalProgress> AccountGoals { get; set; } = new();
+    public InvestmentTimelineData? TimelineData { get; set; }
 }
 
 public class GroupedInvestment

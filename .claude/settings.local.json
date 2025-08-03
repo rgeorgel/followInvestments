@@ -21,7 +21,8 @@
       "Bash(docker exec:*)",
       "Bash(docker logs:*)",
       "Bash(npm run dev:*)",
-      "Bash(dotnet run:*)"
+      "Bash(dotnet run:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
