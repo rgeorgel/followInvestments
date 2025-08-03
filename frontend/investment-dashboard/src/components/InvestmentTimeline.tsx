@@ -5,10 +5,15 @@ import type { InvestmentTimelineData, TimelinePoint } from '../types/Investment'
 interface InvestmentTimelineProps {
   timelineData: InvestmentTimelineData;
   displayCurrency?: string;
+  valuesHidden?: boolean;
 }
 
-const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, displayCurrency }) => {
+const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, displayCurrency, valuesHidden = false }) => {
   const formatCurrency = (value: number, currency: string = 'CAD') => {
+    if (valuesHidden) {
+      return '•••••';
+    }
+    
     // Use the display currency if provided, otherwise use the original currency
     const currencyCode = displayCurrency || (currency === 'BRL' ? 'BRL' : (currency === 'USD' ? 'USD' : 'CAD'));
     return new Intl.NumberFormat('en-US', {
@@ -45,7 +50,10 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
       return (
         <div className="timeline-tooltip">
           <p className="tooltip-label">{label}</p>
-          {payload.map((entry: any, index: number) => {
+          {valuesHidden ? (
+            <p style={{ color: '#666' }}>Values hidden for privacy</p>
+          ) : (
+            payload.map((entry: any, index: number) => {
             const point = entry.payload;
             let displayValue = entry.value;
             let currency = 'CAD';
@@ -79,7 +87,8 @@ const InvestmentTimeline: React.FC<InvestmentTimelineProps> = ({ timelineData, d
                 {entry.name}: {formatCurrency(displayValue, currency)}
               </p>
             );
-          })}
+          })
+          )}
         </div>
       );
     }

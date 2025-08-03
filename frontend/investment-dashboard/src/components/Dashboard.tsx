@@ -22,6 +22,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     return localStorage.getItem('dashboardCurrency') || 'Original';
   });
   const [currencyRates, setCurrencyRates] = useState<{[key: string]: number}>({});
+  const [valuesHidden, setValuesHidden] = useState<boolean>(() => {
+    // Load saved privacy setting from localStorage, default to false (values visible)
+    return localStorage.getItem('dashboardValuesHidden') === 'true';
+  });
 
   const getProgressColor = (progress: number) => {
     if (progress >= 100) return '#27ae60'; // Green - Goal reached
@@ -125,6 +129,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   const formatCurrency = (value: number, originalCurrency: string) => {
+    if (valuesHidden) {
+      return '•••••'; // Hide monetary values
+    }
+    
     if (selectedCurrency === 'Original') {
       // Display in original currency
       const currencyCode = originalCurrency === 'BRL' ? 'BRL' : (originalCurrency === 'USD' ? 'USD' : 'CAD');
@@ -251,6 +259,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     console.log(`Currency changed to: ${currency} (saved to localStorage)`);
   };
 
+  const toggleValuesVisibility = () => {
+    const newHiddenState = !valuesHidden;
+    setValuesHidden(newHiddenState);
+    // Save to localStorage for persistence
+    localStorage.setItem('dashboardValuesHidden', newHiddenState.toString());
+  };
+
   const getConvertedValue = (value: number, originalCurrency: string): number => {
     if (selectedCurrency === 'Original') {
       return value;
@@ -261,7 +276,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
   const calculateTotalPortfolioValue = (): { total: number, display: string } => {
     if (!dashboardData?.accountGoals) {
-      return { total: 0, display: '$0' };
+      return { total: 0, display: valuesHidden ? '•••••' : '$0' };
+    }
+
+    if (valuesHidden) {
+      return { total: 0, display: '•••••' };
     }
 
     if (selectedCurrency === 'Original') {
@@ -421,7 +440,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     <div className="dashboard">
       <div className="dashboard-header">
         <div className="dashboard-title-section">
-          <h2>Investment Dashboard</h2>
+          <div className="dashboard-title-with-toggle">
+            <h2>Investment Dashboard</h2>
+            <button 
+              className="privacy-toggle-btn"
+              onClick={toggleValuesVisibility}
+              title={valuesHidden ? "Show values" : "Hide values"}
+            >
+              {valuesHidden ? '👁️' : '🙈'}
+            </button>
+          </div>
           <div className="portfolio-total">
             <div className="portfolio-total-main">
               <span className="total-label">Total Portfolio:</span>
@@ -853,6 +881,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
               <InvestmentTimeline 
                 timelineData={getConvertedTimelineData(dashboardData.timelineData)} 
                 displayCurrency={selectedCurrency !== 'Original' ? selectedCurrency : undefined}
+                valuesHidden={valuesHidden}
               />
             ) : (
               <div className="timeline-loading">Loading timeline data...</div>
