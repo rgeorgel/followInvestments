@@ -1,6 +1,7 @@
 import type { Account, CreateAccountRequest } from '../types/Account';
+import { getApiBaseUrl } from '../utils/config';
 
-const API_BASE_URL = 'http://localhost:9900/api';
+const API_BASE_URL = getApiBaseUrl();
 
 const createAuthHeaders = () => {
   const token = localStorage.getItem('sessionToken');

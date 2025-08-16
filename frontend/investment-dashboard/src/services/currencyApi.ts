@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:9900/api';
+import { getApiBaseUrl } from '../utils/config';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface ExchangeRates {
   [key: string]: number;

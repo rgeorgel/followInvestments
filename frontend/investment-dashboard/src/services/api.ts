@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type { Investment, CreateInvestmentRequest, DashboardData } from '../types/Investment';
+import { getApiBaseUrl } from '../utils/config';
 
-const API_BASE_URL = 'http://localhost:9900/api';
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import type { Investment, AccountPerformance } from '../types/Investment';
 import { getCategoryLabel } from '../types/Investment';
 import { investmentApi } from '../services/api';
+import { getApiBaseUrl } from '../utils/config';
 import EditInvestmentForm from './EditInvestmentForm';
 
 interface AccountInvestmentsProps {
@@ -56,7 +57,7 @@ const AccountInvestments: React.FC<AccountInvestmentsProps> = ({ account, onBack
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`http://localhost:9900/api/investments/account/${accountId}/performance`, {
+      const response = await fetch(`${getApiBaseUrl()}/investments/account/${accountId}/performance`, {
         headers
       });
       if (response.ok) {

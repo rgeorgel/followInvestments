@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../utils/config';
 
-const API_BASE_URL = 'http://localhost:9900/api';
+const API_BASE_URL = getApiBaseUrl();
 
 export interface LoginRequest {
   email: string;
