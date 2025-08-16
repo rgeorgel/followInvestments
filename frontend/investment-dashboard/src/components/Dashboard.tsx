@@ -802,7 +802,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={convertCountryData(dashboardData.assetsByCountry)}
+                  data={(() => {
+                    const convertedData = convertCountryData(dashboardData.assetsByCountry);
+                    const totalConverted = convertedData.reduce((sum, item) => sum + item.total, 0);
+                    
+                    // Recalculate percentages based on converted totals
+                    return convertedData.map(item => ({
+                      ...item,
+                      percentage: totalConverted > 0 ? Math.round((item.total / totalConverted) * 100 * 100) / 100 : 0
+                    }));
+                  })()}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -828,12 +837,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                       if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
                       if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
                       
-                      return `${entry.country}: ${parts.join(' + ')}`;
+                      return `${entry.country}: ${parts.join(' + ')} (${entry.percentage}%)`;
                     } else {
                       return `${entry.country}: ${selectedCurrency !== 'Original' 
                         ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(entry.total)
                         : `$${entry.total}`
-                      }`;
+                      } (${entry.percentage}%)`;
                     }
                   }}
                   outerRadius={80}
@@ -866,12 +875,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                     if (cadTotal > 0) parts.push(formatCurrency(cadTotal, 'CAD'));
                     if (usdTotal > 0) parts.push(formatCurrency(usdTotal, 'USD'));
                     
-                    return [parts.join(' + '), 'Total'];
+                    return [`${parts.join(' + ')} (${props.payload.percentage}%)`, 'Total'];
                   } else {
                     return [
-                      selectedCurrency !== 'Original' 
+                      `${selectedCurrency !== 'Original' 
                         ? new Intl.NumberFormat('en-US', { style: 'currency', currency: selectedCurrency }).format(value as number)
-                        : `$${value}`, 
+                        : `$${value}`
+                      } (${props.payload.percentage}%)`, 
                       'Total'
                     ];
                   }

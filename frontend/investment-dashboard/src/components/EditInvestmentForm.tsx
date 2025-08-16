@@ -33,6 +33,8 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
     if (category === 3) return 'ETF';
     if (category === 4) return 'Bonds';
     if (category === 5) return 'ManagedPortfolio';
+    if (category === 6) return 'Cash';
+    if (category === 7) return 'ManagedPortfolioBlock';
     return 'Stocks'; // default
   };
   
@@ -216,6 +218,8 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
               <option value={CategoryEnum.ETF}>ETF</option>
               <option value={CategoryEnum.Bonds}>Bonds</option>
               <option value={CategoryEnum.ManagedPortfolio}>Managed Portfolio</option>
+              <option value={CategoryEnum.Cash}>Cash</option>
+              <option value={CategoryEnum.ManagedPortfolioBlock}>Managed Portfolio - block</option>
             </select>
           </div>
 

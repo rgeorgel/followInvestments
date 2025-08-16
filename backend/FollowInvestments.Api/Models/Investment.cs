@@ -64,7 +64,9 @@ public enum Category
     FIIs,
     ETF,
     Bonds,
-    ManagedPortfolio
+    ManagedPortfolio,
+    Cash,
+    ManagedPortfolioBlock
 }
 
 public class CreateInvestmentRequest

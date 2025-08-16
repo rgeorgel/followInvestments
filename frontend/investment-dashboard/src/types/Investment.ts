@@ -32,7 +32,9 @@ export const Category = {
   FIIs: 'FIIs',
   ETF: 'ETF',
   Bonds: 'Bonds',
-  ManagedPortfolio: 'ManagedPortfolio'
+  ManagedPortfolio: 'ManagedPortfolio',
+  Cash: 'Cash',
+  ManagedPortfolioBlock: 'ManagedPortfolioBlock'
 } as const;
 
 export type Currency = typeof Currency[keyof typeof Currency];
@@ -55,6 +57,8 @@ export const getCategoryLabel = (category: string): string => {
     case 'ETF': return 'ETF';
     case 'Bonds': return 'Bonds';
     case 'ManagedPortfolio': return 'Managed Portfolio';
+    case 'Cash': return 'Cash';
+    case 'ManagedPortfolioBlock': return 'Managed Portfolio - block';
     default: return 'Unknown';
   }
 };
