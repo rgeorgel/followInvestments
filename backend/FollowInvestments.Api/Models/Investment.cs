@@ -46,7 +46,13 @@ public class Investment
     public Account Account { get; set; } = null!;
     public virtual User User { get; set; } = null!;
 
-    public string Country => Currency == Currency.BRL ? "Brazil" : "Canada";
+    public string Country => Currency switch
+    {
+        Currency.BRL => "Brazil",
+        Currency.CAD => "Canada", 
+        Currency.USD => "United States",
+        _ => "Unknown"
+    };
     
     public decimal Total => Quantity * Value;
 }
@@ -54,7 +60,8 @@ public class Investment
 public enum Currency
 {
     BRL,
-    CAD
+    CAD,
+    USD
 }
 
 public enum Category

@@ -23,7 +23,8 @@ export interface Investment {
 
 export const Currency = {
   BRL: 'BRL',
-  CAD: 'CAD'
+  CAD: 'CAD',
+  USD: 'USD'
 } as const;
 
 export const Category = {
@@ -45,6 +46,7 @@ export const getCurrencyLabel = (currency: string): string => {
   switch (currency) {
     case 'BRL': return 'BRL (Brazil)';
     case 'CAD': return 'CAD (Canada)';
+    case 'USD': return 'USD (United States)';
     default: return 'Unknown';
   }
 };

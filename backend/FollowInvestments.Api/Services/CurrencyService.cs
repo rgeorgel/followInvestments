@@ -11,10 +11,11 @@ public class CurrencyService : ICurrencyService
     private readonly HttpClient _httpClient;
     private readonly ILogger<CurrencyService> _logger;
 
-    // Currency pairs we need to track
+    // Currency pairs we need to track (all pairs between USD, CAD, BRL)
     private readonly string[] _currencyPairs = {
-        "CADUSD=X", "BRLUSD=X", "CADBRL=X",
-        "USDCAD=X", "USDBRL=X", "BRLCAD=X"
+        "CADUSD=X", "USDCAD=X",
+        "BRLUSD=X", "USDBRL=X", 
+        "CADBRL=X", "BRLCAD=X"
     };
 
     public CurrencyService(InvestmentContext context, HttpClient httpClient, ILogger<CurrencyService> logger)

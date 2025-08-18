@@ -140,6 +140,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSuccess }) => {
           >
             <option value={Currency.BRL}>BRL (Brazil)</option>
             <option value={Currency.CAD}>CAD (Canada)</option>
+            <option value={Currency.USD}>USD (United States)</option>
           </select>
         </div>
 

@@ -22,6 +22,7 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
     if (typeof currency === 'string') return currency;
     if (currency === 0) return 'BRL';
     if (currency === 1) return 'CAD';
+    if (currency === 2) return 'USD';
     return 'BRL'; // default
   };
   
@@ -176,6 +177,7 @@ const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onS
             >
               <option value={CurrencyEnum.BRL}>BRL (Brazil)</option>
               <option value={CurrencyEnum.CAD}>CAD (Canada)</option>
+              <option value={CurrencyEnum.USD}>USD (United States)</option>
             </select>
           </div>
 

@@ -25,6 +25,11 @@
       "Bash(grep:*)",
       "Bash(dotnet build:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\c\\code\\followInvestments\\backend",
+      "C:\\c\\code\\followInvestments\\frontend",
+      "C:\\c\\code"
+    ]
   }
 }
