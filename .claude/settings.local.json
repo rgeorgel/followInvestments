@@ -23,7 +23,12 @@
       "Bash(npm run dev:*)",
       "Bash(dotnet run:*)",
       "Bash(grep:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(npx:*)",
+      "Bash(chmod:*)",
+      "Bash(./test_usd_stocks.sh:*)"
     ],
     "deny": [],
     "additionalDirectories": [

@@ -135,7 +135,7 @@ class CurrencyApi {
     const USDToFrom = rates[`USD${fromCurrency}`];
     const targetToUSD = rates[`${toCurrency}USD`];
     if (USDToFrom && targetToUSD) {
-      return (1 / USDToFrom) * (1 / targetToUSD);
+      return (1 / USDToFrom) * targetToUSD;
     }
 
     console.warn(`No conversion path found for ${fromCurrency} to ${toCurrency}`);
@@ -179,7 +179,7 @@ class CurrencyApi {
     const USDToFrom = rates[`USD${fromCurrency}`];
     const targetToUSD = rates[`${toCurrency}USD`];
     if (USDToFrom && targetToUSD) {
-      return amount * (1 / USDToFrom) * (1 / targetToUSD);
+      return amount * (1 / USDToFrom) * targetToUSD;
     }
 
     console.warn(`No conversion path found for ${fromCurrency} to ${toCurrency}, using 1:1 rate`);

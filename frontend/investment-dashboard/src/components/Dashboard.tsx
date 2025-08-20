@@ -511,16 +511,38 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
 
               // For display: convert all values to selected currency for comparison if not "Original"
 
-              // Determine primary country based on which currency has higher original total
-              const primaryCountry = brlTotal >= cadTotal ? 'Brazil' : 'Canada';
-              const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 'CAN';
+              // Calculate USD total
+              let usdTotal = 0;
+              if (accountGoals?.performance) {
+                const usdInvestments = accountGoals.performance.investments.filter((inv: any) => inv.currency === 'USD');
+                usdTotal = usdInvestments.reduce((sum: number, inv: any) => sum + inv.currentValue, 0);
+              } else {
+                usdTotal = accountInvestments
+                  .filter(inv => inv.currency === 'USD')
+                  .reduce((sum, inv) => sum + (inv.total || (inv.value * inv.quantity)), 0);
+              }
+
+              // Determine primary country based on which currency has highest original total
+              let primaryCountry = 'Canada'; // default
+              let maxTotal = cadTotal;
+              
+              if (brlTotal > maxTotal) {
+                primaryCountry = 'Brazil';
+                maxTotal = brlTotal;
+              }
+              if (usdTotal > maxTotal) {
+                primaryCountry = 'United States';
+              }
+              
+              const countryCode = primaryCountry === 'Brazil' ? 'BRA' : 
+                                 primaryCountry === 'United States' ? 'USA' : 'CAN';
 
               return (
                 <div key={index} className="account-summary-card enhanced">
                   <div className="account-summary-header">
                     <div className="account-name-with-flag">
                       <h4>{accountData.account}</h4>
-                      <span className={`country-code ${primaryCountry.toLowerCase()}`}>{countryCode}</span>
+                      <span className={`country-code ${primaryCountry === 'United States' ? 'united-states' : primaryCountry.toLowerCase()}`}>{countryCode}</span>
                     </div>
                     <span className="investment-count">{accountInvestments.length} investments</span>
                   </div>
@@ -565,6 +587,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                             )}
                           </div>
                         )}
+                        {usdTotal > 0 && (
+                          <div className="currency-total-wrapper">
+                            <div className="currency-total">
+                              <span className="currency-label">USD:</span>
+                              <span className="currency-amount">{formatCurrency(usdTotal, 'USD')}</span>
+                            </div>
+                            {accountGoals?.performance && accountGoals.currency === 'USD' && accountGoals.performance.totalGainLoss !== 0 && (
+                              <div className="performance-indicator-below">
+                                <span className={`performance-amount ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  {formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'USD').amount}
+                                </span>
+                                <span className={`performance-percentage ${accountGoals.performance.totalGainLoss >= 0 ? 'positive' : 'negative'}`}>
+                                  ({formatPerformance(accountGoals.performance.totalGainLoss, accountGoals.performance.totalGainLossPercentage, 'USD').percentage})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </>
                     ) : (
                       // Converted currency display
@@ -572,11 +612,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
                         <div className="currency-total">
                           <span className="currency-label">{selectedCurrency}:</span>
                           <span className="currency-amount">
-                            {formatCurrency(getConvertedValue(brlTotal, 'BRL') + getConvertedValue(cadTotal, 'CAD'), selectedCurrency)}
+                            {formatCurrency(getConvertedValue(brlTotal, 'BRL') + getConvertedValue(cadTotal, 'CAD') + getConvertedValue(usdTotal, 'USD'), selectedCurrency)}
                           </span>
                         </div>
                         <div className="conversion-note">
-                          <small>Converted from {brlTotal > 0 && cadTotal > 0 ? 'BRL + CAD' : (brlTotal > 0 ? 'BRL' : 'CAD')}</small>
+                          <small>Converted from {[
+                            brlTotal > 0 ? 'BRL' : null,
+                            cadTotal > 0 ? 'CAD' : null,
+                            usdTotal > 0 ? 'USD' : null
+                          ].filter(Boolean).join(' + ')}</small>
                         </div>
                         {accountGoals?.performance && accountGoals.performance.totalGainLoss !== 0 && (
                           <div className="performance-indicator-below">

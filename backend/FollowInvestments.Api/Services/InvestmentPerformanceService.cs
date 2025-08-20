@@ -196,6 +196,14 @@ public class InvestmentPerformanceService : IInvestmentPerformanceService
             return name;
         }
 
+        // For USD stocks, check if it's already a valid US symbol (no suffix needed)
+        if (investment.Currency == Currency.USD && 
+            name.All(c => char.IsLetterOrDigit(c)) && 
+            name.Length >= 1 && name.Length <= 5)
+        {
+            return name;
+        }
+
         // Common Canadian stocks
         var canadianMappings = new Dictionary<string, string>
         {
@@ -223,6 +231,31 @@ public class InvestmentPerformanceService : IInvestmentPerformanceService
             ["BTLG11"] = "BTLG11.SA"
         };
 
+        // Common US stocks and ETFs (no suffix needed for Yahoo Finance)
+        var usMappings = new Dictionary<string, string>
+        {
+            ["AAPL"] = "AAPL",
+            ["APPLE"] = "AAPL",
+            ["MSFT"] = "MSFT",
+            ["MICROSOFT"] = "MSFT",
+            ["GOOGL"] = "GOOGL",
+            ["GOOGLE"] = "GOOGL",
+            ["AMZN"] = "AMZN",
+            ["AMAZON"] = "AMZN",
+            ["TSLA"] = "TSLA",
+            ["TESLA"] = "TSLA",
+            ["META"] = "META",
+            ["NVDA"] = "NVDA",
+            ["NVIDIA"] = "NVDA",
+            ["SPY"] = "SPY",
+            ["QQQ"] = "QQQ",
+            ["VTI"] = "VTI",
+            ["VXUS"] = "VXUS",
+            ["VEA"] = "VEA",
+            ["VWO"] = "VWO",
+            ["BND"] = "BND"
+        };
+
         // Check mappings based on currency
         if (investment.Currency == Currency.CAD)
         {
@@ -244,17 +277,38 @@ public class InvestmentPerformanceService : IInvestmentPerformanceService
                 }
             }
         }
+        else if (investment.Currency == Currency.USD)
+        {
+            foreach (var mapping in usMappings)
+            {
+                if (name.Contains(mapping.Key))
+                {
+                    return mapping.Value;
+                }
+            }
+        }
 
         // If no mapping found, try to extract symbol from common patterns
-        // Example: "VFV - S&P 500" -> "VFV.TO"
+        // Example: "VFV - S&P 500" -> "VFV.TO", "AAPL - Apple Inc" -> "AAPL"
         var parts = name.Split(new[] { ' ', '-', ':', '|' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length > 0)
         {
             var potentialSymbol = parts[0];
-            if (potentialSymbol.Length >= 2 && potentialSymbol.Length <= 6 && potentialSymbol.All(char.IsLetterOrDigit))
+            if (potentialSymbol.Length >= 1 && potentialSymbol.Length <= 6 && potentialSymbol.All(char.IsLetterOrDigit))
             {
-                var suffix = investment.Currency == Currency.CAD ? ".TO" : ".SA";
-                return potentialSymbol + suffix;
+                if (investment.Currency == Currency.USD)
+                {
+                    // US stocks don't need suffix
+                    return potentialSymbol;
+                }
+                else if (investment.Currency == Currency.CAD)
+                {
+                    return potentialSymbol + ".TO";
+                }
+                else if (investment.Currency == Currency.BRL)
+                {
+                    return potentialSymbol + ".SA";
+                }
             }
         }
 

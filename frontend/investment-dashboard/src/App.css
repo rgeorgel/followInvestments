@@ -641,6 +641,11 @@
   color: white;
 }
 
+.country-code.united-states {
+  background-color: #007bff;
+  color: white;
+}
+
 .investment-count {
   color: #7f8c8d;
   font-size: 0.9rem;
