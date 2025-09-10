@@ -42,7 +42,9 @@ public class InvestmentPerformanceService : IInvestmentPerformanceService
 
     public async Task<AccountPerformance> CalculateAccountPerformanceAsync(int accountId)
     {
+        // Optimize with AsNoTracking for read-only performance calculation
         var account = await _context.Accounts
+            .AsNoTracking()
             .Include(a => a.Investments)
             .FirstOrDefaultAsync(a => a.Id == accountId);
 
@@ -68,6 +70,7 @@ public class InvestmentPerformanceService : IInvestmentPerformanceService
     public async Task<List<AccountPerformance>> CalculateAllAccountsPerformanceAsync()
     {
         var accounts = await _context.Accounts
+            .AsNoTracking()
             .Include(a => a.Investments)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)

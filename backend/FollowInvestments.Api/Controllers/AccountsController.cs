@@ -22,6 +22,7 @@ public class AccountsController : ControllerBase
     {
         var userId = User.GetUserId();
         return await _context.Accounts
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
@@ -32,7 +33,9 @@ public class AccountsController : ControllerBase
     public async Task<ActionResult<Account>> GetAccount(int id)
     {
         var userId = User.GetUserId();
+        // Optimize with AsNoTracking and more specific query
         var account = await _context.Accounts
+            .AsNoTracking()
             .Include(a => a.Investments)
             .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
 

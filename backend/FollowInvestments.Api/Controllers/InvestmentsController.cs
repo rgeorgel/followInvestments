@@ -27,6 +27,7 @@ public class InvestmentsController : ControllerBase
     {
         var userId = User.GetUserId();
         return await _context.Investments
+            .AsNoTracking()
             .Include(i => i.Account)
             .Where(i => i.UserId == userId)
             .ToListAsync();
@@ -202,19 +203,31 @@ public class InvestmentsController : ControllerBase
         _context.Investments.Add(newInvestment);
         await _context.SaveChangesAsync();
 
-        // Invalidate dashboard cache
-        await InvalidateDashboardCache(userId);
+        // Invalidate dashboard cache and account-specific cache
+        await InvalidateDashboardCache(userId, investment.AccountId);
 
         return CreatedAtAction(nameof(GetInvestment), new { id = newInvestment.Id }, newInvestment);
     }
 
-    private async Task InvalidateDashboardCache(int userId)
+    private async Task InvalidateDashboardCache(int userId, int? accountId = null)
     {
         var dashboardCacheKey = $"dashboard_user_{userId}";
         var timelineCacheKey = $"timeline_user_{userId}";
         
         await _cacheService.RemoveAsync(dashboardCacheKey);
         await _cacheService.RemoveAsync(timelineCacheKey);
+        
+        // Also invalidate account-specific performance cache if accountId is provided
+        if (accountId.HasValue)
+        {
+            var accountPerformanceCacheKey = $"account_performance_{userId}_{accountId.Value}";
+            await _cacheService.RemoveAsync(accountPerformanceCacheKey);
+        }
+        
+        // Invalidate all account performance caches for the user (since calculations may be interdependent)
+        // Note: This is a simplification - ideally we'd track which accounts are affected
+        var allAccountsPerformanceCacheKey = $"all_accounts_performance_{userId}";
+        await _cacheService.RemoveAsync(allAccountsPerformanceCacheKey);
     }
 
     [HttpPut("{id}/test")]
@@ -260,8 +273,8 @@ public class InvestmentsController : ControllerBase
 
             await _context.SaveChangesAsync();
             
-            // Invalidate dashboard cache
-            await InvalidateDashboardCache(userId);
+            // Invalidate dashboard cache and account-specific cache
+            await InvalidateDashboardCache(userId, updateRequest.AccountId);
             
             return NoContent();
         }
@@ -285,8 +298,8 @@ public class InvestmentsController : ControllerBase
         _context.Investments.Remove(investment);
         await _context.SaveChangesAsync();
 
-        // Invalidate dashboard cache
-        await InvalidateDashboardCache(userId);
+        // Invalidate dashboard cache and account-specific cache
+        await InvalidateDashboardCache(userId, investment.AccountId);
 
         return NoContent();
     }
@@ -393,7 +406,21 @@ public class InvestmentsController : ControllerBase
     {
         try
         {
+            var userId = User.GetUserId();
+            var cacheKey = $"account_performance_{userId}_{accountId}";
+            
+            // Try to get from cache first
+            var cachedPerformance = await _cacheService.GetAsync<AccountPerformance>(cacheKey);
+            if (cachedPerformance != null)
+            {
+                return Ok(cachedPerformance);
+            }
+            
             var performance = await _performanceService.CalculateAccountPerformanceAsync(accountId);
+            
+            // Cache for 30 minutes (account-specific data changes less frequently)
+            await _cacheService.SetAsync(cacheKey, performance, TimeSpan.FromMinutes(30));
+            
             return Ok(performance);
         }
         catch (ArgumentException ex)
