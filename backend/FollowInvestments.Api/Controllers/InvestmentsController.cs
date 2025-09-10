@@ -45,13 +45,16 @@ public class InvestmentsController : ControllerBase
         {
             return Ok(cachedData);
         }
+        // Optimize database query with AsNoTracking for better performance
         var investments = await _context.Investments
+            .AsNoTracking()
             .Include(i => i.Account)
             .Where(i => i.UserId == userId)
             .ToListAsync();
         
         // Get all accounts sorted by sort order for consistent ordering
         var allAccounts = await _context.Accounts
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
@@ -345,7 +348,7 @@ public class InvestmentsController : ControllerBase
         
         foreach (var account in allAccounts)
         {
-            var currency = GetAccountCurrency(account);
+            var currency = GetAccountCurrency(account, investments);
             if (account.Goal1.HasValue)
                 goalMarkers.Add(new GoalMarker { Year = currentYear + 1, Value = account.Goal1.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 1" });
             if (account.Goal2.HasValue)
@@ -373,10 +376,10 @@ public class InvestmentsController : ControllerBase
         return timelineData;
     }
 
-    private string GetAccountCurrency(Account account)
+    private string GetAccountCurrency(Account account, List<Investment> investments)
     {
-        // Determine account currency based on its investments
-        var accountInvestments = _context.Investments.Where(i => i.AccountId == account.Id).ToList();
+        // Determine account currency based on its investments from the already-loaded list
+        var accountInvestments = investments.Where(i => i.AccountId == account.Id).ToList();
         if (!accountInvestments.Any()) return "CAD"; // Default
         
         var brlCount = accountInvestments.Count(i => i.Currency == Currency.BRL);
@@ -453,7 +456,7 @@ public class InvestmentsController : ControllerBase
         
         foreach (var account in allAccounts)
         {
-            var currency = GetAccountCurrency(account);
+            var currency = GetAccountCurrency(account, investments);
             if (account.Goal1.HasValue)
                 goalMarkers.Add(new GoalMarker { Year = currentYear + 1, Value = account.Goal1.Value, Currency = currency, AccountName = account.Name, Label = $"{account.Name} Year 1" });
             if (account.Goal2.HasValue)
