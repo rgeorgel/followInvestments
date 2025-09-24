@@ -77,46 +77,115 @@ public class InvestmentsController : ControllerBase
             })
             .ToList();
         
-        // Get assets by account grouped and maintain sort order
-        var assetsByAccountDict = groupedInvestments
+        // Calculate current market values for all investments at once
+        var allInvestmentPerformances = await _performanceService.CalculatePerformanceAsync(investments);
+        var performanceMap = allInvestmentPerformances.ToDictionary(p => p.InvestmentId, p => p);
+        
+        // Calculate current market values for grouped investments
+        var groupedInvestmentsWithCurrentValues = groupedInvestments
+            .Select(gi => {
+                // Find all individual investments for this grouped investment
+                var relatedInvestments = investments
+                    .Where(i => i.Name == gi.Name && i.Currency.ToString() == gi.Currency)
+                    .ToList();
+                
+                // Sum current values from performance data
+                decimal totalCurrentValue = relatedInvestments
+                    .Sum(investment => performanceMap.TryGetValue(investment.Id, out var perf) 
+                        ? perf.CurrentValue 
+                        : investment.Total);
+                
+                return new GroupedInvestment
+                {
+                    Category = gi.Category,
+                    Account = gi.Account,
+                    Name = gi.Name,
+                    TotalQuantity = gi.TotalQuantity,
+                    AverageValue = gi.AverageValue,
+                    Total = totalCurrentValue, // Use calculated current market value
+                    Currency = gi.Currency,
+                    Country = gi.Country
+                };
+            })
+            .ToList();
+        
+        // Get assets by account grouped and maintain sort order (using current values)
+        var assetsByAccountDict = groupedInvestmentsWithCurrentValues
             .GroupBy(i => i.Account)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Total));
         
-        // Create ordered list based on account sort order
+        // Create ordered list based on account sort order with currency info
         var assetsByAccount = allAccounts
             .Where(a => assetsByAccountDict.ContainsKey(a.Name))
-            .Select(a => new { Account = a.Name, Total = assetsByAccountDict[a.Name] })
+            .Select(a => {
+                // Find the predominant currency for this account
+                var accountInvestments = groupedInvestmentsWithCurrentValues
+                    .Where(gi => gi.Account == a.Name)
+                    .ToList();
+                
+                var currencyCount = accountInvestments
+                    .GroupBy(gi => gi.Currency)
+                    .ToDictionary(g => g.Key, g => g.Sum(gi => gi.TotalQuantity));
+                
+                var predominantCurrency = currencyCount.Any() 
+                    ? currencyCount.OrderByDescending(kvp => kvp.Value).First().Key
+                    : "CAD"; // Default fallback
+                
+                return new { 
+                    Account = a.Name, 
+                    Total = assetsByAccountDict[a.Name],
+                    Currency = predominantCurrency
+                };
+            })
             .ToList();
             
-        var assetsByCountry = groupedInvestments
+        var assetsByCountry = groupedInvestmentsWithCurrentValues
             .GroupBy(i => i.Country)
-            .Select(g => new { Country = g.Key, Total = g.Sum(i => i.Total) })
+            .Select(g => {
+                // Find the predominant currency for this country
+                var countryInvestments = g.ToList();
+                var currencyCount = countryInvestments
+                    .GroupBy(gi => gi.Currency)
+                    .ToDictionary(cg => cg.Key, cg => cg.Sum(gi => gi.TotalQuantity));
+                
+                var predominantCurrency = currencyCount.Any() 
+                    ? currencyCount.OrderByDescending(kvp => kvp.Value).First().Key
+                    : "CAD"; // Default fallback
+                
+                return new { 
+                    Country = g.Key, 
+                    Total = g.Sum(i => i.Total),
+                    Currency = predominantCurrency
+                };
+            })
             .ToList();
 
-        var assetsByCategory = investments
+        var assetsByCategory = groupedInvestmentsWithCurrentValues
             .GroupBy(i => i.Category)
             .Select(g => new AssetByCategory 
             { 
                 Category = g.Key.ToString(), 
-                Total = g.Sum(i => i.Total),
+                Total = g.Sum(i => i.Total), // Now using current market values
                 Count = g.Count(),
-                Percentage = investments.Sum(i => i.Total) > 0 ? 
-                    Math.Round((double)(g.Sum(i => i.Total) / investments.Sum(i => i.Total)) * 100, 2) : 0
+                Percentage = groupedInvestmentsWithCurrentValues.Sum(i => i.Total) > 0 ? 
+                    Math.Round((double)(g.Sum(i => i.Total) / groupedInvestmentsWithCurrentValues.Sum(i => i.Total)) * 100, 2) : 0
             })
             .OrderByDescending(a => a.Total)
             .ToList();
-
+        
         // Calculate account performance including gains/losses
         var accountPerformances = await _performanceService.CalculateAllAccountsPerformanceAsync();
         
-        // Calculate account goals progress - get all accounts, not just those with investments
+        // Calculate account goals progress using the same current values as charts
         var accountGoals = allAccounts.Select(account => 
         {
             var accountInvestments = investments.Where(i => i.AccountId == account.Id).ToList();
             var performance = accountPerformances.FirstOrDefault(ap => ap.AccountId == account.Id);
             
-            // Use current value from performance if available, otherwise use book value
-            var currentValue = performance?.CurrentValue ?? accountInvestments.Sum(i => i.Total);
+            // Use current value from grouped investments with current values (same as charts)
+            var currentValue = groupedInvestmentsWithCurrentValues
+                .Where(gi => gi.Account == account.Name)
+                .Sum(gi => gi.Total);
             
             // Determine currency based on investments, default to CAD if no investments
             var currency = accountInvestments.FirstOrDefault()?.Currency.ToString() ?? "CAD";
@@ -145,7 +214,7 @@ public class InvestmentsController : ControllerBase
         var dashboardData = new DashboardData
         {
             AllInvestments = investments,
-            GroupedInvestments = groupedInvestments,
+            GroupedInvestments = groupedInvestmentsWithCurrentValues,
             AssetsByAccount = assetsByAccount,
             AssetsByCountry = assetsByCountry,
             AssetsByCategory = assetsByCategory,

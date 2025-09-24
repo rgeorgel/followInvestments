@@ -327,34 +327,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
     }
   };
 
-  // Helper functions for chart data conversion
+  // Convert assets by account data with currency conversion
   const convertAccountChartData = (data: any[]) => {
     const convertedData = data.map((item: any) => {
-      // Always recalculate from individual investments for accurate proportions
-      const accountInvestments = dashboardData?.allInvestments?.filter(
-        (inv: any) => inv.account.name === item.account
-      ) || [];
+      // Use the pre-calculated total from backend (already includes current market values)
+      const currentTotal = item.total;
 
       if (selectedCurrency === 'Original') {
-        // For Original mode, calculate proportional value using a base currency (CAD)
-        // This ensures correct proportions while preserving display in original currencies
-        const proportionalTotal = accountInvestments.reduce((sum: number, inv: any) => {
-          const invValue = inv.total || (inv.value * inv.quantity);
-          return sum + convertCurrency(invValue, inv.currency, 'CAD');
-        }, 0);
-
+        // For Original mode, no conversion needed - backend already provides current values
         return {
           ...item,
-          total: proportionalTotal,
-          originalTotal: item.total, // Keep original for display
+          total: currentTotal,
+          originalTotal: currentTotal,
           displayMode: 'original'
         };
       } else {
-        // For converted mode, convert to selected currency
-        const convertedTotal = accountInvestments.reduce((sum: number, inv: any) => {
-          const invValue = inv.total || (inv.value * inv.quantity);
-          return sum + getConvertedValue(invValue, inv.currency);
-        }, 0);
+        // For converted mode, use the currency provided by backend or fallback
+        const accountCurrency = item.currency || 'CAD';
+
+        // Convert the total from account currency to selected currency
+        const convertedTotal = getConvertedValue(currentTotal, accountCurrency);
 
         return {
           ...item,
@@ -368,38 +360,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToAccount }) => {
   };
 
   const convertCountryData = (data: any[]) => {
-    return data.map((item: any) => {
-      // Always recalculate from individual investments for accurate proportions
-      const countryInvestments = dashboardData?.allInvestments?.filter(
-        (inv: any) => inv.country === item.country
-      ) || [];
-
+    const convertedData = data.map((item: any) => {
+      const currentTotal = item.total;
+      
       if (selectedCurrency === 'Original') {
-        // For Original mode, calculate proportional value using a base currency (CAD)
-        const proportionalTotal = countryInvestments.reduce((sum: number, inv: any) => {
-          const invValue = inv.total || (inv.value * inv.quantity);
-          return sum + convertCurrency(invValue, inv.currency, 'CAD');
-        }, 0);
-
         return {
           ...item,
-          total: proportionalTotal,
-          originalTotal: item.total,
+          total: currentTotal,
+          originalTotal: currentTotal,
           displayMode: 'original'
         };
       } else {
-        // For converted mode, convert to selected currency
-        const convertedTotal = countryInvestments.reduce((sum: number, inv: any) => {
-          const invValue = inv.total || (inv.value * inv.quantity);
-          return sum + getConvertedValue(invValue, inv.currency);
-        }, 0);
-
+        const countryCurrency = item.currency || 'CAD';
+        const convertedTotal = getConvertedValue(currentTotal, countryCurrency);
         return {
           ...item,
           total: convertedTotal
         };
       }
     });
+
+    return convertedData.sort((a, b) => b.total - a.total);
   };
 
   const convertCategoryData = (data: any[]) => {

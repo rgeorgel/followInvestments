@@ -28,7 +28,8 @@
       "Bash(npx vite:*)",
       "Bash(npx:*)",
       "Bash(chmod:*)",
-      "Bash(./test_usd_stocks.sh:*)"
+      "Bash(./test_usd_stocks.sh:*)",
+      "Bash(docker network create:*)"
     ],
     "deny": [],
     "additionalDirectories": [
